@@ -2160,23 +2160,41 @@ async function loadXenoCanto(species,fallbackLink,targetId){
   const el=document.getElementById(targetId||"xcPlayerQ");
   if(!el)return;
   el.innerHTML='<span style="font-size:11px;color:var(--tm)">🔊 Chargement...</span>';
+  const query=encodeURIComponent(species);
+  // Try fetch first (works on GitHub Pages, may fail in sandboxed envs)
   try{
-    const r=await fetch(`https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(species)}+q:A&page=1`);
-    console.log('XC API response:', r.status, r.ok);
-    if(!r.ok)throw new Error();
-    const data=await r.json();
-    if(data.recordings&&data.recordings.length>0){
-      const good=data.recordings.slice(0,10);
-      const pick=good[Math.floor(Math.random()*good.length)];
-      const audioUrl=pick.file;
-      const recType=pick.type||"";
-      el.innerHTML=`<div style="display:flex;align-items:center;gap:6px">
-        <audio controls preload="none" style="height:30px;max-width:200px;flex:1" src="${audioUrl}"></audio>
-        <span style="font-size:10px;color:var(--tm)">${recType}</span>
-      </div>`;
-    } else {
-      el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Pas d\'audio disponible</span>';
+    const r=await fetch(`https://xeno-canto.org/api/2/recordings?query=${query}+q:A&page=1`);
+    if(r.ok){
+      const data=await r.json();
+      if(data.recordings&&data.recordings.length>0){
+        const good=data.recordings.slice(0,10);
+        const pick=good[Math.floor(Math.random()*good.length)];
+        el.innerHTML=`<div style="display:flex;align-items:center;gap:6px"><audio controls preload="none" style="height:30px;max-width:200px;flex:1" src="${pick.file}"></audio><span style="font-size:10px;color:var(--tm)">${pick.type||""}</span></div>`;
+        return;
+      }
     }
+  }catch(e){}
+  // Fallback: JSONP via script tag (bypasses CORS)
+  try{
+    const cbName='xc'+Math.random().toString(36).slice(2,8);
+    await new Promise((resolve,reject)=>{
+      window[cbName]=function(data){
+        delete window[cbName];
+        if(data?.recordings?.length>0){
+          const good=data.recordings.slice(0,10);
+          const pick=good[Math.floor(Math.random()*good.length)];
+          el.innerHTML=`<div style="display:flex;align-items:center;gap:6px"><audio controls preload="none" style="height:30px;max-width:200px;flex:1" src="${pick.file}"></audio><span style="font-size:10px;color:var(--tm)">${pick.type||""}</span></div>`;
+        } else {
+          el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Pas d\'enregistrement</span>';
+        }
+        resolve();
+      };
+      const s=document.createElement('script');
+      s.src=`https://xeno-canto.org/api/2/recordings?query=${query}+q:A&page=1&callback=${cbName}`;
+      s.onerror=()=>{delete window[cbName];reject();};
+      document.body.appendChild(s);
+      setTimeout(()=>{if(window[cbName]){delete window[cbName];reject();}},8000);
+    });
   }catch(e){
     el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Audio indisponible</span>';
   }
