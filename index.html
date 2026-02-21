@@ -144,8 +144,9 @@ window.onerror=function(msg,url,line,col,err){
     </div>
     <div class="home-body">
       <div style="display:flex;gap:0;margin-bottom:28px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
-        <button id="tabExam" onclick="setTab('exam')" style="flex:1;padding:14px;background:var(--accentD);border:none;color:var(--accentL);font-size:15px;font-family:inherit;font-weight:500;transition:all 0.2s">Mode Examen</button>
-        <button id="tabLibre" onclick="setTab('libre')" style="flex:1;padding:14px;background:var(--card);border:none;border-left:1px solid var(--border);color:var(--td);font-size:15px;font-family:inherit;transition:all 0.2s">Mode Libre</button>
+        <button id="tabExam" onclick="setTab('exam')" style="flex:1;padding:14px;background:var(--accentD);border:none;color:var(--accentL);font-size:14px;font-family:inherit;font-weight:500;transition:all 0.2s">Examen</button>
+        <button id="tabCompet" onclick="setTab('compet')" style="flex:1;padding:14px;background:var(--card);border:none;border-left:1px solid var(--border);color:var(--td);font-size:14px;font-family:inherit;transition:all 0.2s">Compétition</button>
+        <button id="tabLibre" onclick="setTab('libre')" style="flex:1;padding:14px;background:var(--card);border:none;border-left:1px solid var(--border);color:var(--td);font-size:14px;font-family:inherit;transition:all 0.2s">Libre</button>
       </div>
       <div id="examPanel">
         <div class="info-box">
@@ -155,6 +156,20 @@ window.onerror=function(msg,url,line,col,err){
           <span style="color:var(--t)">5 espèces difficiles</span> (genres complexes, confusions possibles)<br>
                   </div>
         <button class="start-btn" onclick="startExam()">Lancer l'examen (20 questions)</button>
+      </div>
+      <div id="competPanel" style="display:none">
+        <div class="info-box">
+          <strong style="color:#e8b84d;font-weight:500">🏆 Mode Compétition</strong><br>
+          <span style="color:var(--t)">20 questions · Timer 30s</span><br>
+          Score pondéré par la rapidité de réponse.<br>
+          Bonne réponse rapide = plus de points !
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;color:var(--tm);margin-bottom:6px">Ton pseudo :</label>
+          <input id="competName" type="text" placeholder="Entrez votre pseudo" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:15px;font-family:inherit;box-sizing:border-box" maxlength="20">
+        </div>
+        <button class="start-btn" style="background:#e8b84d;color:#000" onclick="startCompet()">🏆 Lancer la compétition</button>
+        <div id="leaderboard" style="margin-top:24px"></div>
       </div>
       <div id="librePanel" style="display:none">
         <div style="margin-bottom:28px">
@@ -170,6 +185,7 @@ window.onerror=function(msg,url,line,col,err){
       <div class="score-area"><span class="mono" id="scoreDisp">0</span><span id="streakDisp" style="display:none" class="mono"></span></div>
     </div>
     <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+    <div id="timerBar" style="display:none;width:100%;max-width:1100px;margin:0 auto 4px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div id="timerFill" style="height:100%;background:#e8b84d;width:100%;transition:width 0.1s linear;border-radius:2px"></div></div>
     <div class="q-label" id="qLabel"></div>
     <div id="diffBadge" style="text-align:center;margin-bottom:4px"></div>
     <div class="quiz-grid">
@@ -1420,19 +1436,16 @@ function addModeBtn(grid,icon,label,count,onclick){
 
 
 function setTab(tab){
-  const te=document.getElementById('tabExam'),tl=document.getElementById('tabLibre');
-  if(tab==='exam'){
-    te.style.background='var(--accentD)';te.style.color='var(--accentL)';
-    tl.style.background='var(--card)';tl.style.color='var(--td)';
-  } else {
-    tl.style.background='var(--accentD)';tl.style.color='var(--accentL)';
-    te.style.background='var(--card)';te.style.color='var(--td)';
+  const tabs={exam:document.getElementById('tabExam'),compet:document.getElementById('tabCompet'),libre:document.getElementById('tabLibre')};
+  const panels={exam:document.getElementById('examPanel'),compet:document.getElementById('competPanel'),libre:document.getElementById('librePanel')};
+  for(const k in tabs){
+    if(k===tab){tabs[k].style.background='var(--accentD)';tabs[k].style.color='var(--accentL)';panels[k].style.display='';}
+    else{tabs[k].style.background='var(--card)';tabs[k].style.color='var(--td)';panels[k].style.display='none';}
   }
-  document.getElementById('examPanel').style.display=tab==='exam'?'':'none';
-  document.getElementById('librePanel').style.display=tab==='libre'?'':'none';
+  if(tab==='compet')loadLeaderboard();
 }
 
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showScreen(id){stopTimer();isCompet=id==='home'?false:isCompet;document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 
 function startExam(){
   imgCache={};
@@ -1817,6 +1830,9 @@ function loadQuestion(){
   const xcQ=document.getElementById("xcPlayerQ");
   if(xcQ)xcQ.innerHTML='';
   loadXenoCanto(q.species,`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`,"xcPlayerQ");
+  // Start timer in competition mode
+  if(isCompet)startTimer();
+  else{const tb=document.getElementById("timerBar");if(tb)tb.style.display="none";}
 }
 
 const TAG_LABELS={"male":"♂ Mâle","female":"♀ Femelle","juvenile":"Juvénile"};
@@ -1859,8 +1875,13 @@ function getCriteria(species){
 
 function answer(opt){
   const q=qs[ci];const ok=opt===q.answer;
+  // Stop timer and calculate competition points
+  const elapsed=(Date.now()-timerStart)/1000;
+  if(isCompet)stopTimer();
+  const pts=isCompet?getCompetPoints(ok,elapsed):0;
+  if(isCompet)competScore+=pts;
   if(ok){score++;streak++;if(streak>best)best=streak;}else streak=0;
-  hist.push({...q,userAns:opt,ok});
+  hist.push({...q,userAns:opt,ok,pts});
   document.querySelectorAll(".opt-btn").forEach(b=>{
     b.classList.add("answered");
     const em=b.querySelector("em");
@@ -1870,9 +1891,10 @@ function answer(opt){
     else b.classList.add("faded");
     b.onclick=null;
   });
-  document.getElementById("scoreDisp").textContent=score;
+  document.getElementById("scoreDisp").textContent=isCompet?competScore+" pts":score;
   const sd=document.getElementById("streakDisp");
-  if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";
+  if(isCompet&&pts>0){sd.style.display="";sd.textContent=`+${pts}${pts>=800?" ⚡":""}`;setTimeout(()=>{if(streak<=1)sd.style.display="none";},1500);}
+  else if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";
   document.getElementById("progressFill").style.width=`${((ci+1)/qs.length)*100}%`;
 
   const ab=document.getElementById("answerBox");ab.style.display="block";
@@ -1931,13 +1953,22 @@ function answerMilieu(opt,btn){
 }
 
 function showResults(){
+  stopTimer();
   showScreen("results");
   const total=qs.length;
   const totalScore=score;
   const pct=Math.round((totalScore/total)*100);const wrongs=hist.filter(h=>!h.ok);
   const cls=pct>=80?"good":pct>=50?"mid":"low";
   const msg=pct===100?"Parfait ! Prêt·e pour le terrain !":pct>=80?"Excellent travail !":pct>=60?"Bonne progression !":pct>=40?"Continue, ça vient !":"Courage, révise avec les photos !";
-  let html=`<div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isExam?"Résultats examen":"Résultats"}</div><div class="pct ${cls}">${pct}<span class="unit">%</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total}</div>`;
+  let html=`<div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isCompet?"🏆 Résultats Compétition":isExam?"Résultats examen":"Résultats"}</div>`;
+  if(isCompet){
+    html+=`<div class="pct" style="color:#e8b84d">${competScore}<span class="unit" style="font-size:24px">pts</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total} bonnes réponses</div>`;
+    html+=`<div style="font-size:14px;color:var(--tm);margin:8px 0">Joueur : <strong style="color:var(--t)">${competName}</strong></div>`;
+    // Save score
+    if(window.storage){saveCompetScore(competName,competScore);}
+  } else {
+    html+=`<div class="pct ${cls}">${pct}<span class="unit">%</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total}</div>`;
+  }
   if(isExam){
     const easyScore=hist.slice(0,10).filter(h=>h.ok).length;
     const medScore=hist.slice(10,15).filter(h=>h.ok).length;
@@ -1946,7 +1977,10 @@ function showResults(){
   }
   if(best>1)html+=`<div class="mono" style="font-size:12px;color:var(--gold);margin-bottom:24px">Meilleure série : ${best}</div>`;
   html+=`<div style="font-size:16px;color:var(--td);font-style:italic">${msg}</div></div>`;
-  html+=`<div class="results-btns"><button class="btn-primary" onclick="${isExam?'startExam()':'startQuiz()'}">Recommencer</button><button class="btn-secondary" onclick="showScreen('home')">Menu</button>${wrongs.length?`<button class="btn-gold" onclick="toggleErrors()">Réviser les erreurs (${wrongs.length})</button>`:""}</div><div id="errorsDiv" style="display:none;max-width:560px;width:100%">`;
+  const restartFn=isCompet?'startCompet()':isExam?'startExam()':'startQuiz()';
+  html+=`<div class="results-btns"><button class="btn-primary" onclick="${restartFn}">Recommencer</button><button class="btn-secondary" onclick="showScreen('home')">Menu</button>${wrongs.length?`<button class="btn-gold" onclick="toggleErrors()">Réviser les erreurs (${wrongs.length})</button>`:""}</div>`;
+  if(isCompet){html+=`<div id="competLeaderboardResults" style="margin-top:20px;max-width:400px;width:100%"></div>`;}
+  html+=`<div id="errorsDiv" style="display:none;max-width:560px;width:100%">`;
   wrongs.forEach(h=>{
     const photos=imgCache[h.answer]||[];
     const crit=CRITERES[h.answer];
@@ -1956,12 +1990,157 @@ function showResults(){
   });
   html+="</div>";
   document.getElementById("results").innerHTML=html;
+  if(isCompet&&document.getElementById("competLeaderboardResults")){
+    loadLeaderboardInto("competLeaderboardResults");
+  }
+  isCompet=false;
 }
 
 function toggleErrors(){const d=document.getElementById("errorsDiv");d.style.display=d.style.display==="none"?"block":"none";}
 
 initHome();
 
+
+
+
+// === COMPETITION MODE ===
+let isCompet=false;
+let timerInterval=null;
+let timerStart=0;
+const TIMER_DURATION=30;
+let competScore=0;
+let competName="";
+
+function startCompet(){
+  competName=(document.getElementById("competName").value||"").trim();
+  if(!competName){alert("Choisis un pseudo !");return;}
+  imgCache={};isExam=false;isCompet=true;competScore=0;score=0;streak=0;best=0;hist=[];ci=0;
+  const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M'));
+  const easy=shuffle(metroPool.filter(s=>getDiff(s)===1)).slice(0,8);
+  const med=shuffle(metroPool.filter(s=>getDiff(s)===2)).slice(0,7);
+  const hard=shuffle(metroPool.filter(s=>getDiff(s)===3)).slice(0,5);
+  const all=shuffle([...easy,...med,...hard]);
+  qs=all.map(sp=>{
+    const fam=FAM[sp];
+    const distractors=getDistractors(sp,metroPool,3);
+    const opts=shuffle([sp,...distractors]);
+    return{species:sp,family:fam,answer:sp,options:opts};
+  });
+  showScreen("quiz");loadQuestion();
+}
+
+function startTimer(){
+  stopTimer();
+  timerStart=Date.now();
+  const bar=document.getElementById("timerBar");
+  const fill=document.getElementById("timerFill");
+  if(!bar)return;
+  bar.style.display="";
+  fill.style.width="100%";
+  fill.style.background="#e8b84d";
+  timerInterval=setInterval(()=>{
+    const elapsed=(Date.now()-timerStart)/1000;
+    const pct=Math.max(0,(1-elapsed/TIMER_DURATION)*100);
+    fill.style.width=pct+"%";
+    if(pct<30)fill.style.background="#e85d75";
+    else if(pct<60)fill.style.background="#e8a84d";
+    else fill.style.background="#e8b84d";
+    if(elapsed>=TIMER_DURATION){
+      stopTimer();
+      timeUp();
+    }
+  },100);
+}
+
+function stopTimer(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+}
+
+function timeUp(){
+  // Auto-answer wrong when time runs out
+  const q=qs[ci];
+  streak=0;
+  hist.push({...q,userAns:"(temps écoulé)",ok:false});
+  document.querySelectorAll(".opt-btn").forEach(b=>{
+    b.classList.add("answered");
+    const em=b.querySelector("em");
+    const lat=em?em.textContent:"";
+    if(lat===q.answer)b.classList.add("correct");
+    else b.classList.add("faded");
+    b.onclick=null;
+  });
+  document.getElementById("progressFill").style.width=((ci+1)/qs.length)*100+"%";
+  const ab=document.getElementById("answerBox");ab.style.display="block";
+  const fr=NOM[q.species]||q.species;
+  const crit=getCriteria(q.species);
+  const statusText=STATDET[q.species]||"";
+  const xenoLink=`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`;
+  ab.innerHTML=`<div class="answer-info nok"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">⏱ Temps écoulé !</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><a href="${xenoLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none;margin-left:8px">🔊 xeno-canto ↗</a></div></div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
+}
+
+function getCompetPoints(ok,elapsed){
+  if(!ok)return 0;
+  // Max 1000 points, decreasing with time. Minimum 100 if answered correctly.
+  const timeBonus=Math.max(0,1-elapsed/TIMER_DURATION);
+  return Math.round(100+900*timeBonus);
+}
+
+async function saveCompetScore(name,pts){
+  try{
+    const result=await window.storage.set("leaderboard:"+name+":"+Date.now(),JSON.stringify({name,score:pts,date:new Date().toISOString()}),true);
+  }catch(e){}
+}
+
+async function loadLeaderboard(){
+  const el=document.getElementById("leaderboard");
+  if(!el)return;
+  el.innerHTML='<span style="font-size:12px;color:var(--tm)">Chargement du classement...</span>';
+  try{
+    const keys=await window.storage.list("leaderboard:",true);
+    if(!keys||!keys.keys||!keys.keys.length){
+      el.innerHTML='<div style="text-align:center;color:var(--tm);font-size:13px;padding:12px">Aucun score enregistré. Sois le premier !</div>';
+      return;
+    }
+    const scores=[];
+    for(const k of keys.keys){
+      try{
+        const r=await window.storage.get(k,true);
+        if(r&&r.value)scores.push(JSON.parse(r.value));
+      }catch(e){}
+    }
+    // Best score per player
+    const best={};
+    scores.forEach(s=>{
+      if(!best[s.name]||s.score>best[s.name].score)best[s.name]=s;
+    });
+    const sorted=Object.values(best).sort((a,b)=>b.score-a.score).slice(0,10);
+    const medals=["🥇","🥈","🥉"];
+    el.innerHTML='<div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--tm);margin-bottom:8px;font-family:monospace">🏆 Classement</div>'+
+      sorted.map((s,i)=>`<div style="display:flex;justify-content:space-between;padding:8px 10px;background:${i<3?'rgba(232,184,77,0.08)':'var(--card)'};border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:14px"><span>${medals[i]||'  '+(i+1)+'.'} <strong>${s.name}</strong></span><span class="mono" style="color:var(--accentL)">${s.score} pts</span></div>`).join('');
+  }catch(e){
+    el.innerHTML='<div style="text-align:center;color:var(--tm);font-size:13px;padding:12px">Classement indisponible</div>';
+  }
+}
+
+async function loadLeaderboardInto(targetId){
+  const el=document.getElementById(targetId);
+  if(!el)return;
+  el.innerHTML='<span style="font-size:12px;color:var(--tm)">Chargement du classement...</span>';
+  try{
+    const keys=await window.storage.list("leaderboard:",true);
+    if(!keys||!keys.keys||!keys.keys.length){el.innerHTML='';return;}
+    const scores=[];
+    for(const k of keys.keys){
+      try{const r=await window.storage.get(k,true);if(r&&r.value)scores.push(JSON.parse(r.value));}catch(e){}
+    }
+    const best={};
+    scores.forEach(s=>{if(!best[s.name]||s.score>best[s.name].score)best[s.name]=s;});
+    const sorted=Object.values(best).sort((a,b)=>b.score-a.score).slice(0,10);
+    const medals=["🥇","🥈","🥉"];
+    el.innerHTML='<div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--tm);margin-bottom:8px;font-family:monospace">🏆 Classement</div>'+
+      sorted.map((s,i)=>`<div style="display:flex;justify-content:space-between;padding:8px 10px;background:${i<3?'rgba(232,184,77,0.08)':'var(--card)'};border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:14px"><span>${medals[i]||(i+1)+'.'} <strong>${s.name}</strong></span><span class="mono" style="color:#e8b84d">${s.score} pts</span></div>`).join('');
+  }catch(e){el.innerHTML='';}
+}
 
 
 function reportIssue(species){
