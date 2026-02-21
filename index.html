@@ -1425,6 +1425,7 @@ function setTab(tab){
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 
 function startExam(){
+  imgCache={};
   isExam=true;milieuScore=0;score=0;streak=0;best=0;hist=[];ci=0;
   const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M'));
   const easy=shuffle(metroPool.filter(s=>getDiff(s)===1)).slice(0,10);
@@ -1441,7 +1442,7 @@ function startExam(){
 }
 
 function startQuiz(filterFn){
-  isExam=false;score=0;streak=0;best=0;hist=[];ci=0;
+  imgCache={};isExam=false;score=0;streak=0;best=0;hist=[];ci=0;
   const pool=filterFn?filterFn():ALL_BIRDS;
   if(pool.length<4){alert("Pas assez d'espèces pour ce filtre.");return;}
   const selected=shuffle(pool).slice(0,Math.min(20,pool.length));
@@ -1455,6 +1456,7 @@ function startQuiz(filterFn){
 }
 
 function startWeightedQuiz(pool){
+  imgCache={};
   // Weighted selection: ~2/3 common (endémiques, indigènes, introduits communs), ~1/3 rares (migrateurs, diff 3)
   const common=pool.filter(s=>{
     const st=STATDET[s]||"";
@@ -1586,6 +1588,35 @@ async function fetchImages(species){
     else if(rest?.thumbnail?.source)urls.push(rest.thumbnail.source.replace(/\/\d+px-/,'/900px-'));
   }
 
+  // === iNaturalist supplement: add random research-grade photos ===
+  try{
+    const inatTaxon=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=1`);
+    if(inatTaxon?.results?.[0]?.id){
+      const taxonId=inatTaxon.results[0].id;
+      // Fetch random page of research-grade photo observations
+      const rndPage=Math.floor(Math.random()*5)+1;
+      const inatObs=await tryFetch(`https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&quality_grade=research&photos=true&per_page=12&page=${rndPage}&order_by=random`);
+      if(inatObs?.results){
+        const inatPhotos=[];
+        for(const obs of inatObs.results){
+          if(obs.photos?.[0]?.url){
+            const photoUrl=obs.photos[0].url.replace('square','medium');
+            if(!urls.includes(photoUrl)){
+              inatPhotos.push(photoUrl);
+            }
+          }
+        }
+        // Add up to 4 random iNat photos to supplement Commons
+        const shuffledINat=inatPhotos.sort(()=>Math.random()-0.5);
+        const maxINat=Math.max(1,6-urls.length);
+        for(const u of shuffledINat.slice(0,maxINat)){
+          urls.push(u);
+        }
+      }
+    }
+  }catch(e){}
+
+
   // Build photo objects with tags
   const photoObjs=[];
   const seen=new Set();
@@ -1631,9 +1662,11 @@ function scoreFilename(fn,species){
   // Non-photo formats  
   if(/\.svg$|\.gif$|\.tif[f]?$/i.test(fn))return -200;
   // Eggs, nests, feathers, bones
-  if(/\begg[s]?\b|\bnest\b|\boeuf\b|\bnid\b|clutch|feather|\bplume\b|skeleton|skull|fossil|bone[s]?\b/.test(f))return -200;
-  // Stamps, coins, heraldry
-  if(/stamp|timbre|coin|medal|heraldic|coat of arms|blason|drapeau|flag/.test(f))return -200;
+  if(/\begg[s]?\b|\bnest\b|\boeuf\b|\bnid\b|clutch|feather|\bplume\b|skeleton|skull|fossil|bone[s]?\b|eggshell|coquille/.test(f))return -200;
+  // Stamps, coins, heraldry, trophies, hunting
+  if(/stamp|timbre|coin|medal|heraldic|coat of arms|blason|drapeau|flag|trophy|trophée|troph|hunting|chasse|stuffed|empaillé|taxiderm|prépar/.test(f))return -200;
+  // Book covers, field guides, plates
+  if(/field guide|cover|couverture|book|livre|page \d|fig\.\s?\d|figure \d|tafel|tab\.\s?\d/.test(f))return -200;
   // Drawings, paintings, illustrations
   if(/drawing|illustration|sketch|painting|lithograph|engraving|artwork|plate \d|planche|gravure|keulemans|smit|wolf|hart|lodge|schlegel|print|vintage|historical|antique|proceedings|zoological|fauna of|oiseaux de|histoire naturelle|iconographie|hand.?colou?r|watercolou?r|birdlife|19th.?century|18th.?century|oldbook/.test(f))return -200;
   if(/gould|audubon|naumann|keulemans|wolf |dresser|brrehm|smit |thorburn/.test(f))return -200;
@@ -1838,7 +1871,7 @@ function answer(opt){
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
   const xenoLink=`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`;
-  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><br><a href="${xenoLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
+  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><br><a href="${xenoLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button><button onclick="reportIssue(qs[ci].species)" style="margin-top:6px;width:100%;padding:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--tm);font-size:12px;cursor:pointer;opacity:0.6">⚠ Signaler un problème (photo incorrecte, etc.)</button>`;
 }
 
 function nextQ(){if(ci<qs.length-1){ci++;loadQuestion();}else showResults();}
@@ -1919,6 +1952,16 @@ function toggleErrors(){const d=document.getElementById("errorsDiv");d.style.dis
 
 initHome();
 
+
+
+function reportIssue(species){
+  const fr=NOM[species]||species;
+  const photoUrl=document.getElementById("photoImg")?.src||"";
+  const title=encodeURIComponent(`Photo incorrecte: ${fr} (${species})`);
+  const body=encodeURIComponent(`**Espèce:** ${fr} (${species})\n**Photo:** ${photoUrl}\n**Problème:** (décrivez le problème : mauvaise espèce, dessin, carte, oeuf, etc.)\n`);
+  const url=`https://github.com/mymy-ai/Quiz-ornitho/issues/new?title=${title}&body=${body}`;
+  window.open(url,"_blank");
+}
 
 </script>
 </body>
