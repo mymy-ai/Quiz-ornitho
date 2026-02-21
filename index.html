@@ -182,6 +182,8 @@ window.onerror=function(msg,url,line,col,err){
           <div class="photo-count" id="photoCount"></div>
         </div>
         <div class="photo-nav" id="photoNav"></div>
+        <div id="xcPlayerQ" style="margin:4px 0"></div>
+        <button id="reportBtn" onclick="reportIssue(qs[ci].species)" style="width:100%;padding:5px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--tm);font-size:11px;cursor:pointer;opacity:0.5;margin-top:2px">⚠ Signaler un problème</button>
       </div>
       <div class="quiz-right">
         <div class="options" id="options"></div>
@@ -1811,9 +1813,13 @@ function loadQuestion(){
     document.getElementById("photoSpinner").style.display="none";
     renderPhoto();
   });
+  // Load Xeno-Canto audio with the question
+  const xcQ=document.getElementById("xcPlayerQ");
+  if(xcQ)xcQ.innerHTML='';
+  loadXenoCanto(q.species,`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`,"xcPlayerQ");
 }
 
-const TAG_LABELS={"male":"♂ Mâle","female":"♀ Femelle","juvenile":"Juvénile","flight":"En vol","winter":"Plumage hivernal","breeding":"Plumage nuptial","swimming":"Nage","nesting":"Au nid","general":""};
+const TAG_LABELS={"male":"♂ Mâle","female":"♀ Femelle","juvenile":"Juvénile"};
 function renderPhoto(){
   const img=document.getElementById("photoImg");
   const cur=curPhotos[curPhotoIdx];
@@ -1874,7 +1880,8 @@ function answer(opt){
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
   const xenoLink=`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`;
-  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><br><a href="${xenoLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button><button onclick="reportIssue(qs[ci].species)" style="margin-top:6px;width:100%;padding:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--tm);font-size:12px;cursor:pointer;opacity:0.6">⚠ Signaler un problème (photo incorrecte, etc.)</button>`;
+  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><a href="${xenoLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none">🔊 xeno-canto ↗</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
+
 }
 
 function nextQ(){if(ci<qs.length-1){ci++;loadQuestion();}else showResults();}
@@ -1964,6 +1971,37 @@ function reportIssue(species){
   const body=encodeURIComponent(`**Espèce:** ${fr} (${species})\n**Photo:** ${photoUrl}\n**Problème:** (décrivez le problème : mauvaise espèce, dessin, carte, oeuf, etc.)\n`);
   const url=`https://github.com/mymy-ai/Quiz-ornitho/issues/new?title=${title}&body=${body}`;
   window.open(url,"_blank");
+}
+
+
+async function loadXenoCanto(species,fallbackLink,targetId){
+  const el=document.getElementById(targetId||"xcPlayerQ");
+  if(!el)return;
+  el.innerHTML='<span style="font-size:12px;color:var(--tm)">🔊 Chargement du chant...</span>';
+  try{
+    const r=await fetch(`https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(species)}+q:A&page=1`);
+    if(!r.ok)throw new Error();
+    const data=await r.json();
+    if(data.recordings&&data.recordings.length>0){
+      // Pick a random recording from top quality ones
+      const good=data.recordings.slice(0,10);
+      const pick=good[Math.floor(Math.random()*good.length)];
+      const audioUrl=pick.file;
+      const recType=pick.type||"chant";
+      const loc=pick.loc||"";
+      const recordist=pick.rec||"";
+      el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <audio controls preload="none" style="height:32px;max-width:220px" src="${audioUrl}"></audio>
+        <span style="font-size:11px;color:var(--tm)">${recType}</span>
+        <a href="${fallbackLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none">xeno-canto ↗</a>
+      </div>
+      <div style="font-size:10px;color:var(--tm);margin-top:2px">© ${recordist}${loc?" · "+loc:""}</div>`;
+    } else {
+      el.innerHTML=`<a href="${fallbackLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto ↗</a>`;
+    }
+  }catch(e){
+    el.innerHTML=`<a href="${fallbackLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto ↗</a>`;
+  }
 }
 
 </script>
