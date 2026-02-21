@@ -1977,30 +1977,25 @@ function reportIssue(species){
 async function loadXenoCanto(species,fallbackLink,targetId){
   const el=document.getElementById(targetId||"xcPlayerQ");
   if(!el)return;
-  el.innerHTML='<span style="font-size:12px;color:var(--tm)">🔊 Chargement du chant...</span>';
+  el.innerHTML='<span style="font-size:11px;color:var(--tm)">🔊 Chargement...</span>';
   try{
     const r=await fetch(`https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(species)}+q:A&page=1`);
     if(!r.ok)throw new Error();
     const data=await r.json();
     if(data.recordings&&data.recordings.length>0){
-      // Pick a random recording from top quality ones
       const good=data.recordings.slice(0,10);
       const pick=good[Math.floor(Math.random()*good.length)];
       const audioUrl=pick.file;
-      const recType=pick.type||"chant";
-      const loc=pick.loc||"";
-      const recordist=pick.rec||"";
-      el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <audio controls preload="none" style="height:32px;max-width:220px" src="${audioUrl}"></audio>
-        <span style="font-size:11px;color:var(--tm)">${recType}</span>
-        <a href="${fallbackLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none">xeno-canto ↗</a>
-      </div>
-      <div style="font-size:10px;color:var(--tm);margin-top:2px">© ${recordist}${loc?" · "+loc:""}</div>`;
+      const recType=pick.type||"";
+      el.innerHTML=`<div style="display:flex;align-items:center;gap:6px">
+        <audio controls preload="none" style="height:30px;max-width:200px;flex:1" src="${audioUrl}"></audio>
+        <span style="font-size:10px;color:var(--tm)">${recType}</span>
+      </div>`;
     } else {
-      el.innerHTML=`<a href="${fallbackLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto ↗</a>`;
+      el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Pas d\'audio disponible</span>';
     }
   }catch(e){
-    el.innerHTML=`<a href="${fallbackLink}" target="_blank" style="font-size:12px;color:var(--accentL)">🔊 Écouter sur xeno-canto ↗</a>`;
+    el.innerHTML='';
   }
 }
 
