@@ -126,6 +126,14 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 </style>
 </head>
 <body>
+<div id="errorBanner" style="display:none;background:#ff4444;color:white;padding:10px;font-size:12px;position:fixed;top:0;left:0;right:0;z-index:9999;word-break:break-all"></div>
+<script>
+window.onerror=function(msg,url,line,col,err){
+  var b=document.getElementById("errorBanner");
+  if(b){b.style.display="block";b.textContent="JS Error: "+msg+" (line "+line+")";}
+  return false;
+};
+</script>
 
 <div id="app">
   <div id="home" class="screen active">
