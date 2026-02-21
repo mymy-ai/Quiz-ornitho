@@ -1442,7 +1442,7 @@ function startExam(){
   const all=[...easy,...med,...hard];
   qs=all.map(sp=>{
     const fam=FAM[sp];
-    const distractors=getDistractors(sp,ALL_BIRDS,3);
+    const distractors=getDistractors(sp,metroPool,3);
     const opts=shuffle([sp,...distractors]);
     return{species:sp,family:fam,answer:sp,options:opts};
   });
@@ -1456,7 +1456,7 @@ function startQuiz(filterFn){
   const selected=shuffle(pool).slice(0,Math.min(20,pool.length));
   qs=selected.map(sp=>{
     const fam=FAM[sp];
-    const distractors=getDistractors(sp,ALL_BIRDS,3);
+    const distractors=getDistractors(sp,pool.length>=10?pool:ALL_BIRDS,3);
     const opts=shuffle([sp,...distractors]);
     return{species:sp,family:fam,answer:sp,options:opts};
   });
@@ -1530,7 +1530,7 @@ async function fetchImages(species){
   const taggedFiles=[];  // {file, tag, score}
   
   for(const sc of targetSubcats.slice(0,6)){
-    const sd=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(sc.cat)}&cmtype=file&cmlimit=8&format=json&origin=*`);
+    const sd=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(sc.cat)}&cmtype=file&cmlimit=20&format=json&origin=*`);
     if(sd?.query?.categorymembers){
       const imgs=sd.query.categorymembers.map(f=>f.title).filter(t=>/\.(jpg|jpeg|png)$/i.test(t));
       for(const img of imgs){
@@ -1541,7 +1541,7 @@ async function fetchImages(species){
   }
 
   // Step 3: Also fetch from main category
-  const mainData=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(species)}&cmtype=file&cmlimit=40&format=json&origin=*`);
+  const mainData=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(species)}&cmtype=file&cmlimit=50&format=json&origin=*`);
   if(mainData?.query?.categorymembers){
     const mainFiles=mainData.query.categorymembers.map(f=>f.title).filter(t=>/\.(jpg|jpeg|png)$/i.test(t));
     for(const f of mainFiles){
@@ -1572,7 +1572,7 @@ async function fetchImages(species){
 
   // Step 5: Sort and select diverse set
   taggedFiles.sort((a,b)=>b.score-a.score);
-  const selected=selectDiverse(taggedFiles,6);
+  const selected=selectDiverse(taggedFiles,3);
 
   // Step 6: Resolve URLs
   const urls=[];
@@ -1616,7 +1616,7 @@ async function fetchImages(species){
         }
         // Add up to 4 random iNat photos to supplement Commons
         const shuffledINat=inatPhotos.sort(()=>Math.random()-0.5);
-        const maxINat=Math.max(1,6-urls.length);
+        const maxINat=Math.max(1,4-urls.length);
         for(const u of shuffledINat.slice(0,maxINat)){
           urls.push(u);
         }
@@ -1682,6 +1682,8 @@ function scoreFilename(fn,species){
   if(/museum|specimen|taxiderm|mounted|naturalisé|empaillé|collection/.test(f))return -200;
   // Tracks, pellets, droppings
   if(/\btrack\b|footprint|dropping|pellet|scat|fiente|empreinte/.test(f))return -200;
+  // Multi-species photos
+  if(/\band\b|\bet\b|\bwith\b|\bavec\b|group|mixed|flock|colony|several species|multiple|comparison|compar/.test(f)&&!/feeding|habitat/.test(f))return -80;
   // Habitat/landscape without the bird
   if(/\bhabitat\b|paysage|landscape|biotope|panorama/.test(f)&&!/in habitat|dans/.test(f))return -200;
   // Wikimedia logos and icons
@@ -1748,40 +1750,33 @@ function scoreFilename(fn,species){
 function selectDiverse(scored,max){
   if(scored.length<=max)return scored;
   
+  // Add random jitter to scores so different photos are picked each time
+  const jittered=scored.map(s=>({...s,score:s.score+(Math.random()*20-10)}));
+  jittered.sort((a,b)=>b.score-a.score);
+  
   // Priority categories for ornithology learning
   const priorities=['male','female','flight','juvenile','winter','breeding','swimming','general'];
   const result=[];
   const usedCategories=new Set();
   
-  // First pass: pick one image per priority category
+  // First pass: pick one random image per priority category
   for(const cat of priorities){
     if(result.length>=max)break;
-    const candidate=scored.find(s=>
+    const candidates=jittered.filter(s=>
       !result.includes(s)&&
       s.tags.includes(cat)&&
       !usedCategories.has(cat)
     );
-    if(candidate){
-      result.push(candidate);
-      candidate.tags.forEach(t=>usedCategories.add(t));
+    if(candidates.length){
+      const pick=candidates[Math.floor(Math.random()*Math.min(3,candidates.length))];
+      result.push(pick);
+      pick.tags.forEach(t=>usedCategories.add(t));
     }
   }
   
-  // Second pass: fill remaining with highest-scored unused images
-  for(const s of scored){
-    if(result.length>=max)break;
-    if(!result.includes(s)){
-      // Check this isn't too similar to what we have
-      const dominated=result.some(r=>
-        r.tags.length===s.tags.length&&
-        r.tags.every(t=>s.tags.includes(t))
-      );
-      if(!dominated)result.push(s);
-    }
-  }
-  
-  // Final fill if still short
-  for(const s of scored){
+  // Second pass: fill with random picks from remaining high-scored
+  const remaining=jittered.filter(s=>!result.includes(s));
+  for(const s of remaining){
     if(result.length>=max)break;
     if(!result.includes(s))result.push(s);
   }
