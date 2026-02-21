@@ -2162,6 +2162,7 @@ async function loadXenoCanto(species,fallbackLink,targetId){
   el.innerHTML='<span style="font-size:11px;color:var(--tm)">🔊 Chargement...</span>';
   try{
     const r=await fetch(`https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(species)}+q:A&page=1`);
+    console.log('XC API response:', r.status, r.ok);
     if(!r.ok)throw new Error();
     const data=await r.json();
     if(data.recordings&&data.recordings.length>0){
@@ -2177,7 +2178,7 @@ async function loadXenoCanto(species,fallbackLink,targetId){
       el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Pas d\'audio disponible</span>';
     }
   }catch(e){
-    el.innerHTML='';
+    el.innerHTML='<span style="font-size:11px;color:var(--tm);opacity:0.5">🔇 Audio indisponible</span>';
   }
 }
 
