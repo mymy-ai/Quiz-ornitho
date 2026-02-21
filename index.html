@@ -1891,10 +1891,9 @@ function answer(opt){
     else b.classList.add("faded");
     b.onclick=null;
   });
-  document.getElementById("scoreDisp").textContent=isCompet?competScore+" pts":score;
+  document.getElementById("scoreDisp").textContent=score;
   const sd=document.getElementById("streakDisp");
-  if(isCompet&&pts>0){sd.style.display="";sd.textContent=`+${pts}${pts>=800?" ⚡":""}`;setTimeout(()=>{if(streak<=1)sd.style.display="none";},1500);}
-  else if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";
+  if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";
   document.getElementById("progressFill").style.width=`${((ci+1)/qs.length)*100}%`;
 
   const ab=document.getElementById("answerBox");ab.style.display="block";
@@ -1902,7 +1901,7 @@ function answer(opt){
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
   const xenoLink=`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`;
-  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><a href="${xenoLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none">🔊 xeno-canto ↗</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
+  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
 
 }
 
@@ -1962,10 +1961,10 @@ function showResults(){
   const msg=pct===100?"Parfait ! Prêt·e pour le terrain !":pct>=80?"Excellent travail !":pct>=60?"Bonne progression !":pct>=40?"Continue, ça vient !":"Courage, révise avec les photos !";
   let html=`<div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isCompet?"🏆 Résultats Compétition":isExam?"Résultats examen":"Résultats"}</div>`;
   if(isCompet){
-    html+=`<div class="pct" style="color:#e8b84d">${competScore}<span class="unit" style="font-size:24px">pts</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total} bonnes réponses</div>`;
+    html+=`<div class="pct" style="color:#e8b84d">${totalScore}<span class="unit" style="font-size:24px">/ ${total}</span></div>`;
     html+=`<div style="font-size:14px;color:var(--tm);margin:8px 0">Joueur : <strong style="color:var(--t)">${competName}</strong></div>`;
     // Save score
-    if(window.storage){saveCompetScore(competName,competScore);}
+    if(window.storage){saveCompetScore(competName,totalScore);}
   } else {
     html+=`<div class="pct ${cls}">${pct}<span class="unit">%</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total}</div>`;
   }
@@ -2080,9 +2079,7 @@ function timeUp(){
 
 function getCompetPoints(ok,elapsed){
   if(!ok)return 0;
-  // Max 1000 points, decreasing with time. Minimum 100 if answered correctly.
-  const timeBonus=Math.max(0,1-elapsed/TIMER_DURATION);
-  return Math.round(100+900*timeBonus);
+  return 1;
 }
 
 async function saveCompetScore(name,pts){
