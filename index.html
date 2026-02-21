@@ -1376,13 +1376,14 @@ function initHome(){
     addModeBtn(grid,"❄️","Hivernants",hivernants.length,()=>startQuiz(()=>hivernants));
     addModeBtn(grid,"🔄","De passage",passage.length,()=>startQuiz(()=>passage));
   } else {
-    // OM module
+    // OM module - show ALL species present in each territory
     addSectionLabel(grid,"Par territoire");
-    const reunion=omAll.filter(s=>REG[s]&&REG[s].includes("RE"));
-    const mayotte=omAll.filter(s=>REG[s]&&REG[s].includes("YT"));
-    const antilles=omAll.filter(s=>REG[s]&&REG[s].includes("AN"));
-    const guyane=omAll.filter(s=>REG[s]&&REG[s].includes("GF"));
-    addModeBtn(grid,"🌍","Tous les Outre-mer",omAll.length,()=>startQuiz(()=>omAll));
+    const reunion=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes("RE"));
+    const mayotte=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes("YT"));
+    const antilles=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes("AN"));
+    const guyane=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes("GF"));
+    const allOM=ALL_BIRDS.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
+    addModeBtn(grid,"🌍","Tous les Outre-mer",allOM.length,()=>startQuiz(()=>allOM));
     if(reunion.length>=2)addModeBtn(grid,"🏝️","La Réunion",reunion.length,()=>startWeightedQuiz(reunion));
     if(mayotte.length>=2)addModeBtn(grid,"🌺","Mayotte",mayotte.length,()=>startWeightedQuiz(mayotte));
     if(antilles.length>=2)addModeBtn(grid,"🌴","Antilles",antilles.length,()=>startWeightedQuiz(antilles));
