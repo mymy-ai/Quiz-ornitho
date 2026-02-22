@@ -37,7 +37,7 @@ a:hover{text-decoration:underline}
 .home-header h1{font-family:'DM Serif Display',Georgia,serif;font-size:clamp(28px,5.5vw,42px);font-weight:400;letter-spacing:-0.5px;line-height:1.15;margin-bottom:8px;color:var(--t)}
 .home-header .sub{color:var(--td);font-size:14px;font-style:italic;font-weight:300}
 .home-body{max-width:520px;width:100%;padding:28px 20px;margin:0 auto}
-.mode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mode-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .ct{display:block;font-size:10px;opacity:0.7;margin-top:2px}
 .mode-btn{padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);color:var(--td);text-align:left;font-size:13px;transition:all 0.2s;line-height:1.35}
@@ -127,7 +127,6 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .quiz-grid{display:flex;flex-direction:row;gap:12px;width:100%;max-width:1100px;align-items:stretch;margin:0 auto}
 .quiz-left{flex:1.2;min-width:0;display:flex;flex-direction:column}
 .quiz-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;justify-content:center}
-@media(max-width:600px){.mode-grid{grid-template-columns:1fr 1fr}.mode-grid-3{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:850px){
   .quiz-grid{flex-direction:column;align-items:center;gap:8px}
   .quiz-left{max-width:100%;width:100%}
@@ -149,13 +148,16 @@ window.onerror=function(msg,url,line,col,err){
 <div id="app">
   <div id="home" class="screen active">
     <div class="home-header">
-      <div style="font-size:52px;margin-bottom:12px;line-height:1">🦩</div>
+      <div style="font-size:52px;margin-bottom:12px;line-height:1">🐦</div>
       <h1>Quiz Ornitho</h1>
       <p class="sub">918 espèces · France métropolitaine & Outre-mer · Identification sur photo</p>
 
     </div>
     <div class="home-body">
-      <button id="fichesBtn" onclick="openFiches()" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--td);font-size:13px;font-family:inherit;cursor:pointer;margin-bottom:12px;transition:all 0.2s">📋 Fiches espèces de France métropolitaine</button>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="fichesBtn" onclick="openFiches()" style="flex:1;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--td);font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s">📋 Fiches espèces</button>
+        <button onclick="showProfile()" style="flex:1;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--td);font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s">📊 Mon profil</button>
+      </div>
       <!-- Module selection -->
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button id="modMetro" onclick="setModule('metro')" style="flex:1;padding:16px 12px;background:var(--accentD);border:1px solid var(--accent);border-radius:8px;color:var(--accentL);font-size:15px;font-family:inherit;font-weight:500;cursor:pointer;transition:all 0.2s;text-align:center">🇫🇷 France<br><span style="font-size:11px;font-weight:400;opacity:0.8" id="metroCount"></span></button>
@@ -251,9 +253,18 @@ window.onerror=function(msg,url,line,col,err){
       <div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)" id="fichesTitle">📋 Fiches espèces</div>
     </div>
     <div style="padding:12px;max-width:800px;margin:0 auto">
-      <input id="fichesSearch" type="text" placeholder="🔍 Rechercher une espèce..." oninput="filterFiches()" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--t);font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:12px">
+      <input id="fichesSearch" type="text" placeholder="🔍 Rechercher une espèce..." oninput="filterFiches()" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--t);font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:8px">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--tm)">Trier :</span>
+        <select id="fichesSort" onchange="filterFiches()" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--t);font-size:12px;font-family:inherit">
+          <option value="alpha">Alphabétique</option>
+          <option value="taxo">Groupe taxonomique</option>
+          <option value="habitat">Habitat</option>
+          <option value="diff">Difficulté</option>
+        </select>
+      </div>
       <div id="fichesFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-      <div id="fichesList" style="max-height:calc(100vh - 180px);overflow-y:auto"></div>
+      <div id="fichesList" style="max-height:calc(100vh - 220px);overflow-y:auto"></div>
     </div>
   </div>
   <div id="ficheDetail" class="screen">
@@ -262,6 +273,13 @@ window.onerror=function(msg,url,line,col,err){
       <div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)" id="ficheTitle"></div>
     </div>
     <div id="ficheContent" style="padding:16px;max-width:700px;margin:0 auto"></div>
+  </div>
+  <div id="profile" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('home')">← Menu</button>
+      <div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)">📊 Mon profil</div>
+    </div>
+    <div style="padding:16px;max-width:700px;margin:0 auto" id="profileContent"></div>
   </div>
   <div id="about" class="screen">
     <div class="top-bar">
@@ -357,15 +375,11 @@ const CREOLE={
 "Cacicus cela":"Cassique cul-jaune / Cul-jaune","Thraupis episcopus":"Tangara évêque / Bleuet",
 "Thraupis palmarum":"Tangara des palmiers / Gris-bleu","Volatinia jacarina":"Jacarini noir / Ti-Louis",
 "Ramphocelus carbo":"Tangara à bec d'argent / Cardinal",
-"Gallinula chloropus":"Poule d'eau",
 "Anous stolidus":"Macous / Mouette",
 "Anous tenuirostris":"Gailette / Noddi à bec grêle",
 "Fregetta grallaria":"Tipoika",
 "Onychoprion fuscatus":"Gailette",
 "Sula dactylatra":"Fou masqué",
-"Sterna hirundo":"Gailette",
-"Sterna dougallii":"Gailette",
-"Pluvialis squatarola":"Pluvier argenté",
 "Quelea quelea":"Travailleur à bec rouge",
 "Vidua macroura":"Veuve",
 "Turnix nigricollis":"Caille pays / Hémipode",
@@ -375,23 +389,10 @@ const CREOLE={
 "Leiothrix lutea":"Rossignol du Japon",
 "Gracula religiosa":"Mainate",
 "Gygis alba":"Gailette blanche",
-"Numenius arquata":"Courlis",
-"Numenius phaeopus":"Courlis",
-"Calidris ferruginea":"Bécasseau",
-"Calidris alba":"Bécasseau",
-"Arenaria interpres":"Ti tourne galets / Tournepierre",
-"Passer domesticus":"Moineau",
 "Fregata ariel":"Frégate",
-"Bubulcus ibis":"Héron garde-bœufs",
 "Butorides striata":"Héron strié / Butor",
-"Actitis hypoleucos":"Chevalier guignette",
-"Tringa nebularia":"Chevalier aboyeur",
-"Tringa stagnatilis":"Chevalier bargette",
 "Gallus gallus":"Coq sauvage / Coq bankiva",
-"Columba livia":"Pigeon",
 "Psittacula krameri":"Perruche à collier",
-"Coturnix coturnix":"Caille des blés / Caille patate",
-"Phasianus colchicus":"Faisan",
 "Fregata minor":"Frégate du Pacifique",
 "Macronectes giganteus":"Pétrel géant",
 "Corvus splendens":"Corbeau familier",
@@ -1518,7 +1519,7 @@ function initHome(){
       {label:"Pétrels, fous, cormorans & guillemots",icon:"🌊",families:["Alcidés","Sulidés","Procellariidés","Hydrobatidés","Phalacrocoracidés"]},
     ];
     addSectionLabel(grid,"Par groupe (sans accidentels)");
-    taxoGroups.forEach(g=>{
+    taxoGroups.sort((a,b)=>a.label.localeCompare(b.label,'fr')).forEach(g=>{
       const pool=regular.filter(s=>g.families.includes(FAM[s]));
       if(pool.length>=2) addModeBtn(grid,g.icon,g.label,pool.length,()=>startQuiz(()=>pool));
     });
@@ -1535,7 +1536,7 @@ function initHome(){
       {label:"Zones riveraines",icon:"🌿",codes:["ZR"]},
     ];
     addSectionLabel(grid,"Par habitat (sans accidentels)");
-    habitatFilters.forEach(h=>{
+    habitatFilters.sort((a,b)=>a.label.localeCompare(b.label,'fr')).forEach(h=>{
       const pool=regular.filter(s=>h.codes.some(code=>HAB[s]&&HAB[s].includes(code)));
       if(pool.length>=2) addModeBtn(grid,h.icon,h.label,pool.length,()=>startQuiz(()=>pool));
     });
@@ -1551,10 +1552,10 @@ function initHome(){
     // OM module
     const allOM=ALL_BIRDS.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
     const territories=[
-      {id:"RE",label:"🇷🇪 La Réunion",icon:"🇷🇪"},
-      {id:"YT",label:"🇾🇹 Mayotte",icon:"🇾🇹"},
-      {id:"AN",label:"🇬🇵🇲🇶 Guadeloupe & Martinique",icon:"🇬🇵"},
-      {id:"GF",label:"🇬🇫 Guyane française",icon:"🇬🇫"},
+      {id:"RE",label:"La Réunion",icon:"🇷🇪"},
+      {id:"YT",label:"Mayotte",icon:"🇾🇹"},
+      {id:"AN",label:"Guadeloupe & Martinique",icon:"🇬🇵"},
+      {id:"GF",label:"Guyane française",icon:"🇬🇫"},
     ];
     function omCat(sp){
       const sd=(STATDET[sp]||'').toLowerCase();
@@ -1853,6 +1854,9 @@ async function fetchImages(species){
     }
   }
 
+  // Cap at 4 photos max
+  if(urls.length>4)urls.length=4;
+
   // Fallback: REST API summary image
   if(urls.length===0){
     const rest=await tryFetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
@@ -1948,7 +1952,7 @@ function scoreFilename(fn,species){
   // Non-photo formats  
   if(/\.svg$|\.gif$|\.tif[f]?$/i.test(fn))return -200;
   // Eggs, nests, feathers, bones
-  if(/\begg[s]?\b|\bnest\b|\boeuf\b|\bnid\b|clutch|feather|\bplume\b|skeleton|skull|fossil|bone[s]?\b|eggshell|coquille/.test(f))return -200;
+  if(/\begg[s]?\b|\bnest\b|\boeuf\b|\bnid\b|clutch|feather|\bplume\b|skeleton|skull|fossil|bone[s]?\b|eggshell|coquille|caterpillar|chenille|larva|larve|raupe|insect/.test(f))return -200;
   // Stamps, coins, heraldry, trophies, hunting
   if(/stamp|timbre|coin|medal|heraldic|coat of arms|blason|drapeau|flag|trophy|trophée|troph|hunting|chasse|stuffed|empaillé|taxiderm|prépar/.test(f))return -200;
   // Book covers, field guides, plates
@@ -2160,6 +2164,7 @@ function answer(opt){
   if(isCompet)competScore+=pts;
   if(ok){score++;streak++;if(streak>best)best=streak;}else streak=0;
   hist.push({...q,userAns:opt,ok,pts});
+  recordAnswer(q.species, ok, currentModule);
   document.querySelectorAll(".opt-btn").forEach(b=>{
     b.classList.add("answered");
     const em=b.querySelector("em");
@@ -2231,6 +2236,7 @@ function answerMilieu(opt,btn){
 
 function showResults(){
   stopTimer();
+  endSession();
   showScreen("results");
   const total=qs.length;
   const totalScore=score;
@@ -2357,6 +2363,7 @@ function timeUp(){
   const q=qs[ci];
   streak=0;
   hist.push({...q,userAns:"(temps écoulé)",ok:false});
+  recordAnswer(q.species, false, currentModule);
   document.querySelectorAll(".opt-btn").forEach(b=>{
     b.classList.add("answered");
     const em=b.querySelector("em");
@@ -2503,7 +2510,7 @@ function openFiches(){
   const filterDiv=document.getElementById("fichesFilter");
   const territories=currentModule==="metro"?
     [{id:"all",label:"Toutes"},{id:"M",label:"🇫🇷 France métro."}]:
-    [{id:"all",label:"Tous"},{id:"RE",label:"🇷🇪 Réunion"},{id:"YT",label:"🇾🇹 Mayotte"},{id:"AN",label:"🇬🇵 Antilles"},{id:"GF",label:"🇬🇫 Guyane"}];
+    [{id:"all",label:"Tous"},{id:"RE",label:"Réunion"},{id:"YT",label:"Mayotte"},{id:"AN",label:"Antilles"},{id:"GF",label:"Guyane"}];
   filterDiv.innerHTML=territories.map(t=>
     `<button onclick="fichesTerritory='${t.id}';filterFiches();this.parentElement.querySelectorAll('button').forEach(b=>{b.style.background='var(--card)';b.style.color='var(--td)'});this.style.background='var(--accentD)';this.style.color='var(--accentL)'" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:${t.id==='all'?'var(--accentD)':'var(--card)'};color:${t.id==='all'?'var(--accentL)':'var(--td)'};font-size:12px;font-family:inherit;cursor:pointer">${t.label}</button>`
   ).join('');
@@ -2531,20 +2538,42 @@ function filterFiches(){
       return fr.includes(search)||sci.includes(search)||cr.includes(search);
     });
   }
-  pool.sort((a,b)=>(NOM[a]||'').localeCompare(NOM[b]||'','fr'));
+  const sortMode=document.getElementById("fichesSort")?.value||'alpha';
+  pool.sort((a,b)=>{
+    if(sortMode==='taxo'){
+      const fa=FAM[a]||'',fb=FAM[b]||'';
+      if(fa!==fb)return fa.localeCompare(fb,'fr');
+    }else if(sortMode==='habitat'){
+      const ha=HAB[a]||'zzz',hb=HAB[b]||'zzz';
+      if(ha!==hb)return ha.localeCompare(hb);
+    }else if(sortMode==='diff'){
+      const da=getDiff(a),db=getDiff(b);
+      if(da!==db)return da-db;
+    }
+    return (NOM[a]||'').localeCompare(NOM[b]||'','fr');
+  });
   const list=document.getElementById("fichesList");
   if(!pool.length){list.innerHTML='<div style="text-align:center;color:var(--tm);padding:20px">Aucune espèce trouvée</div>';return;}
-  list.innerHTML=`<div style="font-size:11px;color:var(--tm);margin-bottom:8px">${pool.length} espèces</div>`+
-    pool.map(sp=>{
-      const fr=NOM[sp]||sp;
-      const cr=CREOLE[sp]||'';
-      const crShort=cr?cr.split('/')[0].trim():'';
-      const fam=FAM[sp]||'';
-      const d=getDiff(sp);
-      const stars='★'.repeat(d);
-      const statC=getStatusColor(sp);
-      return `<button onclick="showFiche('${sp.replace(/'/g,"\\'")}')" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s;color:var(--t)" onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='var(--card)'"><div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--accentL);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fr}${crShort?` <span style="color:var(--gold);font-size:12px">· ${crShort}</span>`:''}</div><div style="font-size:11px;color:var(--tm);font-style:italic">${sp}</div></div><div style="font-size:10px;color:var(--tm);text-align:right;flex-shrink:0"><div>${fam}</div><div style="color:${statC}">${stars}</div></div></button>`;
-    }).join('');
+  let html=`<div style="font-size:11px;color:var(--tm);margin-bottom:8px">${pool.length} espèces</div>`;
+  let lastGroup='';
+  pool.forEach(sp=>{
+    // Group header
+    let group='';
+    if(sortMode==='taxo')group=FAM[sp]||'Autre';
+    else if(sortMode==='habitat'){const h=HAB[sp]||'';group=h.split(',')[0]||'Non classé';
+      for(const [name,obj] of Object.entries(HABITATS||{})){if(obj.code===group){group=obj.emoji+' '+name;break;}}}
+    else if(sortMode==='diff')group=['','🌱 Facile','🔬 Moyen','🏔️ Difficile'][getDiff(sp)]||'';
+    if(group&&group!==lastGroup){html+=`<div style="padding:8px 4px 4px;font-size:12px;font-weight:500;color:var(--accentL);border-bottom:1px solid var(--border);margin-top:8px">${group}</div>`;lastGroup=group;}
+    const fr=NOM[sp]||sp;
+    const cr=CREOLE[sp]||'';
+    const crShort=cr?cr.split('/')[0].trim():'';
+    const fam=FAM[sp]||'';
+    const d=getDiff(sp);
+    const stars='\u2605'.repeat(d);
+    const statC=getStatusColor(sp);
+    html+=`<button onclick="showFiche('${sp.replace(/'/g,"\\'")}')" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s;color:var(--t)" onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='var(--card)'"><div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--accentL);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fr}${crShort?` <span style="color:var(--gold);font-size:12px">\u00b7 ${crShort}</span>`:''}</div><div style="font-size:11px;color:var(--tm);font-style:italic">${sp}</div></div><div style="font-size:10px;color:var(--tm);text-align:right;flex-shrink:0"><div>${fam}</div><div style="color:${statC}">${stars}</div></div></button>`;
+  });
+  list.innerHTML=html;
 }
 
 async function showFiche(sp){
@@ -2587,7 +2616,7 @@ async function showFiche(sp){
   <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
     <span style="padding:3px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--tm)">${fam}</span>
     <span style="padding:3px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:12px;color:${statC}">${statText||'—'}</span>
-    <span style="padding:3px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--tm)">${stars}</span>
+    <span style="padding:3px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--tm)" title="Difficulté d'identification">${stars} ${d===1?'Facile':d===2?'Moyen':'Difficile'}</span>
   </div>
   ${regFlags.length?`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">${regFlags.map(r=>`<span style="padding:2px 8px;background:rgba(74,158,92,0.1);border-radius:3px;font-size:11px;color:var(--td)">${r}</span>`).join('')}</div>`:''}
   ${habLabels.length?`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">${habLabels.map(h=>`<span style="padding:2px 6px;background:rgba(100,180,100,0.1);border-radius:3px;font-size:11px;color:var(--tm)">${h}</span>`).join('')}</div>`:''}
@@ -2596,9 +2625,10 @@ async function showFiche(sp){
     <div style="font-size:14px;color:var(--t);line-height:1.6">${crit.i}</div>
     ${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-top:10px;margin-bottom:4px">Confusions possibles</div><div style="font-size:13px;color:var(--td);line-height:1.5;font-style:italic">${crit.v}</div>`:''}
   </div>`:''}
-  <div style="display:flex;gap:8px;justify-content:center">
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
     <a href="${xenoLink}" target="_blank" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--accentL);text-decoration:none;font-size:13px">🔊 Xeno-Canto ↗</a>
     <a href="${inatLink}" target="_blank" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--accentL);text-decoration:none;font-size:13px">📷 iNaturalist ↗</a>
+    <button onclick="reportIssue('${sp}')" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:#e8a84d;font-size:13px;font-family:inherit;cursor:pointer">⚠️ Signaler</button>
   </div>`;
   
   // Multi-photo gallery for fiches (more photos than quiz)
@@ -2623,6 +2653,215 @@ async function showFiche(sp){
   } else if(mainDiv){
     mainDiv.innerHTML='<span style="font-size:48px">🐦</span><br><span style="font-size:11px;color:var(--tm)">Photo indisponible</span>';
   }
+}
+
+// ============================================
+// PROFILE & STATS SYSTEM (localStorage)
+// ============================================
+
+function getStats(){
+  try{return JSON.parse(localStorage.getItem('quizOrnithoStats'))||{};}catch(e){return {};}
+}
+function saveStats(stats){
+  try{localStorage.setItem('quizOrnithoStats',JSON.stringify(stats));}catch(e){}
+}
+
+function recordAnswer(species, correct, module){
+  const stats=getStats();
+  if(!stats.species)stats.species={};
+  if(!stats.species[species])stats.species[species]={ok:0,ko:0,last:0};
+  if(correct)stats.species[species].ok++;
+  else stats.species[species].ko++;
+  stats.species[species].last=Date.now();
+  
+  // Track session
+  if(!stats.sessions)stats.sessions=[];
+  if(!stats._curSession){
+    stats._curSession={date:Date.now(),module:module||currentModule,ok:0,ko:0};
+    stats.sessions.push(stats._curSession);
+  }
+  if(correct)stats._curSession.ok++;
+  else stats._curSession.ko++;
+  
+  // Global totals
+  if(!stats.total)stats.total={ok:0,ko:0};
+  if(correct)stats.total.ok++;
+  else stats.total.ko++;
+  
+  saveStats(stats);
+}
+
+function endSession(){
+  const stats=getStats();
+  delete stats._curSession;
+  saveStats(stats);
+}
+
+// Hook into answer checking
+const _origCheckAnswer=typeof checkAnswer==='function'?checkAnswer:null;
+
+function showProfile(){
+  showScreen('profile');
+  renderProfile();
+}
+
+function renderProfile(){
+  const el=document.getElementById('profileContent');
+  const stats=getStats();
+  const sp=stats.species||{};
+  const total=stats.total||{ok:0,ko:0};
+  const totalQ=total.ok+total.ko;
+  const pct=totalQ?Math.round(total.ok/totalQ*100):0;
+  
+  // Species stats
+  const speciesKnown=Object.keys(sp).filter(s=>sp[s].ok>0);
+  const speciesMastered=Object.keys(sp).filter(s=>sp[s].ok>=3&&sp[s].ok/(sp[s].ok+sp[s].ko)>=0.7);
+  const speciesStruggle=Object.keys(sp).filter(s=>sp[s].ko>sp[s].ok&&(sp[s].ok+sp[s].ko)>=2);
+  
+  // Per-family stats
+  const famStats={};
+  for(const [s,d] of Object.entries(sp)){
+    const f=FAM[s]||'Autre';
+    if(!famStats[f])famStats[f]={ok:0,ko:0,species:new Set()};
+    famStats[f].ok+=d.ok;
+    famStats[f].ko+=d.ko;
+    famStats[f].species.add(s);
+  }
+  
+  // Per taxo group stats
+  const taxoGroupStats={};
+  const taxoG=[
+    {label:"Canards, oies & cygnes",icon:"🦆",families:["Anatidés"]},
+    {label:"Rapaces diurnes",icon:"🦅",families:["Accipitridés","Falconidés","Pandionidés"]},
+    {label:"Chouettes & hiboux",icon:"🦉",families:["Strigidés","Tytonidés","Caprimulgidés"]},
+    {label:"Mouettes & goélands",icon:"🕊️",families:["Laridés","Stercorariidés"]},
+    {label:"Limicoles",icon:"🦩",families:["Scolopacidés","Charadriidés","Récurvirostridés","Haematopodidés","Burhinidés","Glaréolidés"]},
+    {label:"Hérons & cigognes",icon:"🦢",families:["Ardéidés","Ciconiidés","Threskiornithidés","Phœnicoptéridés","Pélécanidés"]},
+    {label:"Fringillidés & bruants",icon:"🐤",families:["Fringillidés","Emberizidés","Passéridés","Calcariidés"]},
+    {label:"Fauvettes & gobemouches",icon:"🎵",families:["Sylviidés","Phylloscopidés","Acrocéphalidés","Locustellidés","Cettiidés","Cisticolidés","Muscicapidés","Régulidés"]},
+    {label:"Grives",icon:"🎶",families:["Turdidés"]},
+    {label:"Alouettes & pipits",icon:"🌾",families:["Alaudidés","Motacillidés"]},
+    {label:"Mésanges",icon:"💛",families:["Paridés","Aegithalidés","Sittidés","Certhiidés","Tichodromidés","Panuridés","Rémizidés"]},
+    {label:"Corvidés",icon:"⬛",families:["Corvidés","Sturnidés","Oriolidés","Laniidés"]},
+    {label:"Martinets & hirondelles",icon:"✈️",families:["Apodidés","Hirundinidés"]},
+    {label:"Pics & martin-pêcheur",icon:"🪶",families:["Alcédinidés","Méropidés","Upupidés","Picidés","Coraciidés"]},
+    {label:"Pigeons & tourterelles",icon:"🕊",families:["Columbidés","Cuculidés","Ptéroclidés"]},
+    {label:"Galliformes",icon:"🐓",families:["Phasianidés"]},
+    {label:"Plongeons & grèbes",icon:"🤿",families:["Gaviidés","Podicipédidés"]},
+    {label:"Râles & grues",icon:"🌿",families:["Rallidés","Gruidés","Otididés"]},
+    {label:"Oiseaux marins",icon:"🌊",families:["Alcidés","Sulidés","Procellariidés","Hydrobatidés","Phalacrocoracidés"]},
+  ];
+  for(const gdata of taxoG){
+    const fams=gdata.families||[];
+    let ok=0,ko=0,seen=new Set();
+    for(const [s,d] of Object.entries(sp)){
+      if(fams.includes(FAM[s])){ok+=d.ok;ko+=d.ko;seen.add(s);}
+    }
+    const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M')&&!ACC[s]);
+    const poolSize=metroPool.filter(s=>fams.includes(FAM[s])).length;
+    if(poolSize>0)taxoGroupStats[gdata.label]={ok,ko,seen:seen.size,total:poolSize,icon:gdata.icon||''};
+  }
+  
+  // Build HTML
+  let html=`
+  <div style="text-align:center;margin-bottom:20px">
+    <div style="font-size:48px;margin-bottom:8px">${pct>=80?'🏆':pct>=50?'🌿':pct>=20?'🌱':'🥚'}</div>
+    <div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:var(--t)">${pct>=80?'Expert':pct>=50?'Confirmé':pct>=20?'Apprenti':'Débutant'}</div>
+    <div style="font-size:13px;color:var(--tm);margin-top:4px">${totalQ} questions · ${pct}% de réussite</div>
+  </div>
+  
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">
+      <div style="font-size:24px;color:var(--accentL);font-weight:600">${speciesKnown.length}</div>
+      <div style="font-size:11px;color:var(--tm)">Espèces vues</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">
+      <div style="font-size:24px;color:#4a9e5c;font-weight:600">${speciesMastered.length}</div>
+      <div style="font-size:11px;color:var(--tm)">Maîtrisées</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">
+      <div style="font-size:24px;color:#e85d75;font-weight:600">${speciesStruggle.length}</div>
+      <div style="font-size:11px;color:var(--tm)">À travailler</div>
+    </div>
+  </div>`;
+  
+  // Taxo group breakdown
+  const sortedGroups=Object.entries(taxoGroupStats).sort((a,b)=>{
+    const pa=a[1].ok+a[1].ko?a[1].ok/(a[1].ok+a[1].ko):0;
+    const pb=b[1].ok+b[1].ko?b[1].ok/(b[1].ok+b[1].ko):0;
+    return pa-pb; // worst first
+  });
+  
+  if(sortedGroups.length){
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:500;color:var(--accentL);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Compétences par groupe</div>`;
+    
+    for(const [gname,gd] of sortedGroups){
+      const gtotal=gd.ok+gd.ko;
+      const gpct=gtotal?Math.round(gd.ok/gtotal*100):0;
+      const barColor=gpct>=80?'#4a9e5c':gpct>=50?'#e8b84d':'#e85d75';
+      const coverage=gd.total?Math.round(gd.seen/gd.total*100):0;
+      html+=`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:13px;color:var(--t)">${gd.icon} ${gname}</span>
+          <span style="font-size:11px;color:var(--tm)">${gpct}% · ${gd.seen}/${gd.total} espèces</span>
+        </div>
+        <div style="height:6px;background:var(--card2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${gpct}%;background:${barColor};border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+  
+  // Species to work on
+  if(speciesStruggle.length){
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:500;color:#e85d75;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">À travailler</div>`;
+    const worst=speciesStruggle.sort((a,b)=>{
+      const ra=sp[a].ok/(sp[a].ok+sp[a].ko);
+      const rb=sp[b].ok/(sp[b].ok+sp[b].ko);
+      return ra-rb;
+    }).slice(0,10);
+    for(const s of worst){
+      const d=sp[s];
+      const r=Math.round(d.ok/(d.ok+d.ko)*100);
+      html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;color:var(--t);cursor:pointer" onclick="showFiche('${s.replace(/'/g,"\\'")}')">${NOM[s]||s}</span>
+        <span style="font-size:11px;color:#e85d75">${r}% (${d.ok}/${d.ok+d.ko})</span>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+  
+  // Recently mastered
+  if(speciesMastered.length){
+    const recent=speciesMastered.sort((a,b)=>sp[b].last-sp[a].last).slice(0,8);
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:500;color:#4a9e5c;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Dernières maîtrisées ✓</div>`;
+    for(const s of recent){
+      html+=`<span style="display:inline-block;padding:3px 8px;margin:2px;background:rgba(74,158,92,0.15);border-radius:4px;font-size:12px;color:var(--t);cursor:pointer" onclick="showFiche('${s.replace(/'/g,"\\'")}')">${NOM[s]||s}</span>`;
+    }
+    html+=`</div>`;
+  }
+  
+  // Quiz suggestion
+  if(sortedGroups.length){
+    const weakest=sortedGroups[0];
+    if(weakest){
+      html+=`<div style="text-align:center;margin-top:16px;padding:16px;background:var(--accentD);border:1px solid var(--accent);border-radius:8px">
+        <div style="font-size:13px;color:var(--accentL);margin-bottom:8px">💡 Suggestion : travaille tes <strong>${weakest[0]}</strong></div>
+        <div style="font-size:11px;color:var(--tm)">C'est ton groupe le plus faible (${weakest[1].ok+weakest[1].ko?Math.round(weakest[1].ok/(weakest[1].ok+weakest[1].ko)*100):0}%)</div>
+      </div>`;
+    }
+  }
+  
+  // Reset button
+  html+=`<div style="text-align:center;margin-top:24px">
+    <button onclick="if(confirm('Réinitialiser toutes tes statistiques ?')){localStorage.removeItem('quizOrnithoStats');renderProfile();}" style="padding:8px 16px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--tm);font-size:12px;font-family:inherit;cursor:pointer">🗑️ Réinitialiser mes stats</button>
+  </div>`;
+  
+  el.innerHTML=html;
 }
 
 </script>
