@@ -1783,7 +1783,7 @@ function showBadge(icon,text){
 
 function startExam(){
   imgCache={};
-  isExam=true;milieuScore=0;score=0;streak=0;best=0;hist=[];ci=0;
+  isExam=true;isCompet=false;isFreeText=false;milieuScore=0;score=0;streak=0;best=0;hist=[];ci=0;
   const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M'));
   const easy=shuffle(metroPool.filter(s=>getDiff(s)===1)).slice(0,10);
   const med=shuffle(metroPool.filter(s=>getDiff(s)===2)).slice(0,5);
@@ -1843,7 +1843,7 @@ function startWeightedQuiz(pool){
     if(!remaining.length)break;
     picked.push(remaining[Math.floor(Math.random()*remaining.length)]);
   }
-  isExam=false;score=0;streak=0;best=0;hist=[];ci=0;
+  isExam=false;isCompet=false;isFreeText=false;score=0;streak=0;best=0;hist=[];ci=0;
   const selected=shuffle(picked);
   qs=selected.map(sp=>{
     const fam=FAM[sp];
@@ -1857,6 +1857,7 @@ function startWeightedQuiz(pool){
 
 async function fetchImages(species){
   if(imgCache[species])return imgCache[species];
+  try{
   const tryFetch=async(url)=>{try{const r=await fetch(url);if(r.ok)return await r.json();}catch(e){}return null;};
 
   // Step 1: Get subcategories of the species category on Commons
@@ -2010,6 +2011,7 @@ async function fetchImages(species){
   }
   imgCache[species]=photoObjs;
   return photoObjs;
+  }catch(err){console.error('fetchImages error for',species,err);imgCache[species]=[];return [];}
 }
 
 function tagFilename(fn){
@@ -2177,6 +2179,7 @@ function selectDiverse(scored,max){
 }
 
 function loadQuestion(){
+  try{
   const q=qs[ci];zoomed=false;curPhotoIdx=0;curPhotos=[];
   // Locality indicator for OM species
   const regions=REG[q.species]||'';
@@ -2278,11 +2281,14 @@ function loadQuestion(){
   fetchImages(q.species).then(photos=>{
     // Limit photos: Confirmé/Expert = 1 photo, Débutant = up to 4, Apprenti = up to 3
     if(isFreeText){curPhotos=(photos||[]).slice(0,1);}
-    else if(competLevel==='apprenti'){curPhotos=(photos||[]).slice(0,3);}
+    else if(isCompet&&competLevel==='apprenti'){curPhotos=(photos||[]).slice(0,3);}
     else{curPhotos=(photos||[]).slice(0,4);}
     curPhotoIdx=0;
     document.getElementById("photoSpinner").style.display="none";
     renderPhoto();
+  }).catch(e=>{
+    console.error('Photo fetch error:',e);
+    document.getElementById("photoSpinner").style.display="none";
   });
   // Load Xeno-Canto audio with the question
   const xcQ=document.getElementById("xcPlayerQ");
@@ -2291,6 +2297,7 @@ function loadQuestion(){
   // Start timer in competition mode
   if(isCompet)startTimer();
   else{const tb=document.getElementById("timerBar");if(tb)tb.style.display="none";}
+  }catch(err){console.error('loadQuestion error:',err);document.getElementById("photoSpinner").style.display="none";}
 }
 
 const TAG_LABELS={"male":"♂ Mâle","female":"♀ Femelle","juvenile":"Juvénile"};
