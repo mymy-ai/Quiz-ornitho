@@ -44,6 +44,7 @@ button{font-family:inherit;cursor:pointer}
 .back-btn{display:inline-flex;align-items:center;gap:4px;padding:10px 16px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--accentL);font-size:14px;font-family:inherit;cursor:pointer;transition:all 0.2s;font-weight:500}
 .back-btn:hover{background:var(--accentD);border-color:var(--accent)}
 @media(min-width:768px){.back-btn{font-size:15px;padding:12px 20px}}
+.top-bar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1100px;padding:10px 16px;box-sizing:border-box}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 a{color:var(--accentL);text-decoration:none}
 a:hover{text-decoration:underline}
@@ -256,7 +257,7 @@ window.onerror=function(msg,url,line,col,err){
   </div>
   <div id="quiz" class="screen">
     <div class="top-bar">
-      <button class="back-btn" onclick="showScreen('home')">← Menu</button>
+      <button class="back-btn" onclick="if(confirm('Quitter le quiz en cours ?'))showScreen('home')">← Menu</button>
       <div class="score-area"><span class="mono" id="scoreDisp">0</span><span id="streakDisp" style="display:none" class="mono"></span></div>
     </div>
     <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
@@ -283,7 +284,7 @@ window.onerror=function(msg,url,line,col,err){
     </div>
   </div>
   <div id="milieuQ" class="screen">
-    <div class="top-bar"><div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)">Question bonus — Habitat</div></div>
+    <div class="top-bar"><button class="back-btn" onclick="showScreen('home')">← Menu</button><div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)">Question bonus — Habitat</div></div>
     <div style="padding:16px;text-align:center"><div style="font-size:17px;color:var(--t);margin-bottom:16px">À quel habitat associez-vous ces espèces ?</div>
     <div id="milieuSpecies" style="max-width:480px;margin:0 auto 20px"></div>
     <div id="milieuOptions" style="max-width:480px;margin:0 auto"></div>
@@ -2174,35 +2175,62 @@ function scoreFilename(fn,species){
 function selectDiverse(scored,max){
   if(scored.length<=max)return scored;
   
-  // Add random jitter to scores so different photos are picked each time
+  // Add random jitter for variety
   const jittered=scored.map(s=>({...s,score:s.score+(Math.random()*20-10)}));
   jittered.sort((a,b)=>b.score-a.score);
   
-  // Priority categories for ornithology learning
-  const priorities=['male','female','flight','juvenile','winter','breeding','swimming','general'];
   const result=[];
-  const usedCategories=new Set();
+  const used=new Set(); // track used files
   
-  // First pass: pick one random image per priority category
-  for(const cat of priorities){
+  function pick(candidates){
+    const c=candidates.filter(s=>!used.has(s.file));
+    if(!c.length)return null;
+    const p=c[Math.floor(Math.random()*Math.min(3,c.length))];
+    used.add(p.file);
+    result.push(p);
+    return p;
+  }
+  
+  // 1. ALWAYS pick an adult/typical photo first (male, female, breeding, general — NOT juvenile)
+  const adults=jittered.filter(s=>!s.tags.includes('juvenile'));
+  pick(adults);
+  
+  // 2. Pick at most 1 juvenile if available
+  if(result.length<max){
+    const juvs=jittered.filter(s=>s.tags.includes('juvenile'));
+    if(juvs.length)pick(juvs);
+  }
+  
+  // 3. Fill remaining slots with diverse non-juvenile photos
+  // Prefer categories not yet represented
+  const usedTags=new Set();
+  result.forEach(r=>r.tags.forEach(t=>usedTags.add(t)));
+  const diversityOrder=['flight','female','male','winter','breeding','swimming','general'];
+  for(const cat of diversityOrder){
     if(result.length>=max)break;
-    const candidates=jittered.filter(s=>
-      !result.includes(s)&&
-      s.tags.includes(cat)&&
-      !usedCategories.has(cat)
-    );
-    if(candidates.length){
-      const pick=candidates[Math.floor(Math.random()*Math.min(3,candidates.length))];
-      result.push(pick);
-      pick.tags.forEach(t=>usedCategories.add(t));
+    if(usedTags.has(cat))continue;
+    const cands=jittered.filter(s=>s.tags.includes(cat)&&!s.tags.includes('juvenile'));
+    if(pick(cands)){
+      usedTags.add(cat);
     }
   }
   
-  // Second pass: fill with random picks from remaining high-scored
-  const remaining=jittered.filter(s=>!result.includes(s));
+  // 4. Fill any remaining with best-scored non-juvenile, non-duplicate
+  const remaining=jittered.filter(s=>!used.has(s.file)&&!s.tags.includes('juvenile'));
   for(const s of remaining){
     if(result.length>=max)break;
-    if(!result.includes(s))result.push(s);
+    used.add(s.file);
+    result.push(s);
+  }
+  
+  // 5. Last resort: allow more juveniles if we still don't have enough
+  if(result.length<max){
+    const leftover=jittered.filter(s=>!used.has(s.file));
+    for(const s of leftover){
+      if(result.length>=max)break;
+      used.add(s.file);
+      result.push(s);
+    }
   }
   
   return result;
@@ -2499,7 +2527,7 @@ function showResults(){
     :competLevel==='confirme'?(pct>=70?"🌳 Bravo ! Le niveau Expert t'attend.":pct>=50?"🌳 Bon niveau, travaille les familles difficiles.":"🌳 La saisie libre demande de la pratique.")
     :(pct>=80?"🦅 Impressionnant ! Niveau expert confirmé.":pct>=50?"🦅 Bon score expert. Les accidentels sont exigeants.":"🦅 Normal en expert ! Chaque erreur est un apprentissage.")
   ):(pct===100?"Parfait ! Prêt·e pour le terrain !":pct>=80?"Excellent travail !":pct>=60?"Bonne progression !":pct>=40?"Continue, ça vient !":"Courage, révise avec les fiches !");
-  let html=`<div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isCompet?"🏆 Résultats Compétition":isExam?"Résultats examen":"Résultats"}</div>`;
+  let html=`<div class="top-bar"><button class="back-btn" onclick="showScreen('home')">← Menu</button></div><div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isCompet?"🏆 Résultats Compétition":isExam?"Résultats examen":"Résultats"}</div>`;
   if(isCompet){
     html+=`<div class="pct" style="color:#e8b84d">${competScore}<span class="unit" style="font-size:24px">pts</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total} bonnes réponses</div>`;
     html+=`<div style="font-size:14px;color:var(--tm);margin:8px 0">Joueur : <strong style="color:var(--t)">${competName}</strong></div>`;
