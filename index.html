@@ -18,7 +18,23 @@
 --accent:#3d9452;--accentL:#5fbf73;--accentD:#275e33;
 --ok:#2d8a4e;--okBg:#0f2216;--no:#c45555;--noBg:#2a1212;
 --t:#dceadc;--td:#7fa87f;--tm:#4a6a4a;--gold:#d4a853;
---radius:8px;
+--radius:8px;--yes:#2d8a4e;
+}
+/* Light mode */
+[data-theme="light"]{
+--bg:#f5f8f5;--card:#ffffff;--card2:#eaf2ea;--border:#c5d9c5;
+--accent:#2d7a3e;--accentL:#1d6030;--accentD:#e3f0e3;
+--ok:#2d8a4e;--okBg:#e8f5e8;--no:#c45555;--noBg:#fdeaea;
+--t:#1a2e1a;--td:#3a5a3a;--tm:#6a8a6a;--gold:#b8861a;
+--yes:#2d8a4e;
+}
+/* High contrast (projection) */
+[data-theme="contrast"]{
+--bg:#000000;--card:#111;--card2:#1a1a1a;--border:#444;
+--accent:#00cc44;--accentL:#33ff77;--accentD:#003311;
+--ok:#00cc44;--okBg:#003311;--no:#ff4444;--noBg:#330000;
+--t:#ffffff;--td:#cccccc;--tm:#888888;--gold:#ffcc00;
+--yes:#00cc44;
 }
 body{background:var(--bg);color:var(--t);font-family:'DM Sans','Palatino Linotype',Georgia,serif;font-size:16px;min-height:100vh;-webkit-font-smoothing:antialiased}
 .mono{font-family:'DM Sans','SF Mono','Fira Code',monospace;font-weight:400}
@@ -115,7 +131,24 @@ select{width:100%;padding:10px 12px;background:var(--card);border:1px solid var(
 input[type=range]{width:100%;accent-color:var(--accent)}
 
 /* Home page actions */
-.info-box{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:24px;font-size:14px;color:var(--td);line-height:1.7}
+/* Level-specific accent colors */
+.level-debutant{--lvl:#4a9e5c;--lvlBg:rgba(74,158,92,0.1);--lvlBd:rgba(74,158,92,0.3)}
+.level-apprenti{--lvl:#5ba8c8;--lvlBg:rgba(91,168,200,0.1);--lvlBd:rgba(91,168,200,0.3)}
+.level-confirme{--lvl:#e8a84d;--lvlBg:rgba(232,168,77,0.1);--lvlBd:rgba(232,168,77,0.3)}
+.level-expert{--lvl:#d05555;--lvlBg:rgba(208,85,85,0.1);--lvlBd:rgba(208,85,85,0.3)}
+.quiz-level-badge{position:absolute;top:8px;left:8px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:500;z-index:5}
+/* Feedback toast */
+.feedback-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:15px;font-weight:500;z-index:100;animation:toastIn 0.3s ease,toastOut 0.3s ease 1.5s forwards;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+.feedback-toast.ok{background:#1a5a2e;color:#7fff99;border:1px solid #2d8a4e}
+.feedback-toast.nok{background:#5a1a1a;color:#ff9999;border:1px solid #c45555}
+[data-theme="light"] .feedback-toast.ok{background:#d4f5d4;color:#1a5a2e}
+[data-theme="light"] .feedback-toast.nok{background:#fde0e0;color:#8a2020}
+.badge-pop{animation:badgePop 0.6s ease}
+@keyframes badgePop{0%{transform:scale(0.5);opacity:0}50%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+/* Tablet responsive */
+@media(min-width:768px){.home-body{max-width:640px;padding:32px 28px}.mode-grid{gap:8px}.opt-btn{font-size:16px;padding:16px 20px}}
 .start-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),var(--accentD));border:none;border-radius:var(--radius);color:#fff;font-size:16px;font-weight:500;letter-spacing:0.3px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 12px rgba(61,148,82,0.15)}
 .start-btn:hover{filter:brightness(1.1);box-shadow:0 4px 20px rgba(61,148,82,0.25);transform:translateY(-1px)}
 
@@ -148,6 +181,11 @@ window.onerror=function(msg,url,line,col,err){
 <div id="app">
   <div id="home" class="screen active">
     <div class="home-header">
+      <div style="position:absolute;top:12px;right:12px;display:flex;gap:4px">
+        <button onclick="setTheme('dark')" title="Sombre" style="padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:14px;cursor:pointer;color:var(--td)">🌙</button>
+        <button onclick="setTheme('light')" title="Clair" style="padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:14px;cursor:pointer;color:var(--td)">☀️</button>
+        <button onclick="setTheme('contrast')" title="Contraste (projection)" style="padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-size:14px;cursor:pointer;color:var(--td)">🔆</button>
+      </div>
       <div style="font-size:52px;margin-bottom:12px;line-height:1">🐦</div>
       <h1>Quiz Ornitho</h1>
       <p class="sub">918 espèces · France métropolitaine & Outre-mer · Identification sur photo</p>
@@ -1688,6 +1726,61 @@ function setTab(tab){
 
 function showScreen(id){stopTimer();isCompet=id==='home'?false:isCompet;document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 
+// === THEME SYSTEM ===
+function setTheme(theme){
+  if(theme==='dark')document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',theme);
+  try{localStorage.setItem('quizOrnithoTheme',theme);}catch(e){}
+}
+(function(){try{const t=localStorage.getItem('quizOrnithoTheme');if(t&&t!=='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+
+// === PEDAGOGICAL FEEDBACK ===
+const ENCOURAGEMENTS=['Bravo !','Bien joué !','Exactement !','Parfait !','Bonne réponse !','Bien vu !','Correct !'];
+const ENCOURAGEMENTS_STREAK=['Super série !','Tu enchaînes !','Inarrêtable !','En pleine forme !','Impressionnant !'];
+const FEEDBACK_WRONG=['Pas celui-ci...','Dommage !','Presque !','Pas tout à fait...','Raté cette fois !'];
+
+function showFeedbackToast(ok,streakCount){
+  // Only show in Débutant/Apprenti (progression logic)
+  if(isFreeText)return; // Confirmé/Expert = no feedback toast
+  const toast=document.createElement('div');
+  toast.className='feedback-toast '+(ok?'ok':'nok');
+  if(ok&&streakCount>=3){
+    toast.textContent=ENCOURAGEMENTS_STREAK[Math.floor(Math.random()*ENCOURAGEMENTS_STREAK.length)]+' 🔥'+streakCount;
+  }else if(ok){
+    toast.textContent=ENCOURAGEMENTS[Math.floor(Math.random()*ENCOURAGEMENTS.length)];
+  }else{
+    toast.textContent=FEEDBACK_WRONG[Math.floor(Math.random()*FEEDBACK_WRONG.length)];
+  }
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),2000);
+}
+
+// === STREAK MILESTONE BADGES ===
+function checkMilestone(stats){
+  const sp=stats.species||{};
+  const mastered=Object.keys(sp).filter(s=>sp[s].ok>=3&&sp[s].ok/(sp[s].ok+sp[s].ko)>=0.7);
+  const milestones=[10,25,50,100,200];
+  const icons=['🥉','🥈','🥇','🏆','👑'];
+  const names=['10 espèces','25 espèces','50 espèces','100 espèces','200 espèces'];
+  const prev=parseInt(localStorage.getItem('quizOrnithoLastMilestone')||'0');
+  for(let i=milestones.length-1;i>=0;i--){
+    if(mastered.length>=milestones[i]&&prev<milestones[i]){
+      localStorage.setItem('quizOrnithoLastMilestone',milestones[i].toString());
+      showBadge(icons[i],names[i]+' maîtrisées !');
+      break;
+    }
+  }
+}
+
+function showBadge(icon,text){
+  const badge=document.createElement('div');
+  badge.className='badge-pop';
+  badge.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:2px solid var(--gold);border-radius:16px;padding:24px 32px;text-align:center;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5)';
+  badge.innerHTML=`<div style="font-size:48px;margin-bottom:8px">${icon}</div><div style="font-size:16px;color:var(--gold);font-weight:500">${text}</div>`;
+  document.body.appendChild(badge);
+  setTimeout(()=>{badge.style.transition='opacity 0.5s';badge.style.opacity='0';setTimeout(()=>badge.remove(),500);},3000);
+}
+
 function startExam(){
   imgCache={};
   isExam=true;milieuScore=0;score=0;streak=0;best=0;hist=[];ci=0;
@@ -2100,7 +2193,13 @@ function loadQuestion(){
   const diff=getDiff(q.species);
   const dlab=diff===1?"Facile":diff===2?"Intermédiaire":diff===3?"Difficile":"Très difficile";
   const dcol=diff===1?"var(--accentL)":diff===2?"var(--gold)":diff===3?"var(--no)":"#c44";
-  document.getElementById("diffBadge").innerHTML=(isExam||isCompet)?`<span class="mono" style="font-size:10px;padding:2px 10px;border-radius:99px;background:${dcol}22;color:${dcol}">${dlab}</span>`:"";
+  // Level badge for competition
+  let lvlBadge='';
+  if(isCompet){
+    const lvlData={debutant:['🌱','Débutant','#4a9e5c'],apprenti:['🌿','Apprenti','#5ba8c8'],confirme:['🌳','Confirmé','#e8a84d'],expert:['🦅','Expert','#d05555']}[competLevel]||['','',''];
+    lvlBadge=`<span style="font-size:11px;padding:3px 8px;border-radius:99px;background:${lvlData[2]}22;color:${lvlData[2]};margin-left:6px">${lvlData[0]} ${lvlData[1]}</span>`;
+  }
+  document.getElementById("diffBadge").innerHTML=((isExam||isCompet)?`<span class="mono" style="font-size:10px;padding:2px 10px;border-radius:99px;background:${dcol}22;color:${dcol}">${dlab}</span>`:"")+lvlBadge;
 
   document.getElementById("answerBox").style.display="none";
   const opts=document.getElementById("options");opts.innerHTML="";
@@ -2242,6 +2341,8 @@ function answer(opt){
   if(ok){score++;streak++;if(streak>best)best=streak;}else streak=0;
   hist.push({...q,userAns:opt==='__wrong__'?'(réponse incorrecte)':opt,ok,pts});
   recordAnswer(q.species, ok, currentModule);
+  showFeedbackToast(ok,streak);
+  checkMilestone(getStats());
   
   if(q.freeText){
     // Free text mode - show result
@@ -2271,7 +2372,19 @@ function answer(opt){
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
   const xenoLink=`https://xeno-canto.org/explore?query=${encodeURIComponent(q.species)}`;
-  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><a href="${xenoLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none;margin-left:8px">🔊 Xeno-Canto ↗</a></div>${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
+  // In progression mode (QCM), show what the user chose and why it's different
+  let confusionTip='';
+  if(!ok&&!isFreeText&&opt!=='__wrong__'){
+    const wrongFr=NOM[opt]||opt;
+    const wrongFam=FAM[opt]||'';
+    const rightFam=FAM[q.species]||'';
+    if(wrongFam===rightFam){
+      confusionTip=`<div style="margin-top:10px;padding:10px;background:rgba(200,150,50,0.1);border-left:3px solid var(--gold);border-radius:4px;font-size:13px;color:var(--td)">💡 <strong style="color:var(--gold)">Confusion classique :</strong> ${wrongFr} et ${fr} sont de la même famille (${rightFam}). Observe bien les différences de taille, couleur et silhouette.</div>`;
+    }else{
+      confusionTip=`<div style="margin-top:10px;padding:10px;background:rgba(200,150,50,0.1);border-left:3px solid var(--gold);border-radius:4px;font-size:13px;color:var(--td)">💡 Tu as choisi <em>${wrongFr}</em> (${wrongFam}) — compare avec <em>${fr}</em> (${rightFam}).</div>`;
+    }
+  }
+  ab.innerHTML=`<div class="answer-info ${ok?"ok":"nok"}"><div style="font-size:15px;color:var(--td);line-height:1.7"><span class="mono label" style="margin-bottom:4px">Réponse</span><br><em style="color:var(--accentL);font-size:20px">${fr}</em> — <em style="font-size:14px;color:var(--tm)">${q.species}</em>${statusText?`<div style="margin:4px 0;font-size:12px;padding:3px 8px;background:rgba(0,0,0,0.2);border-radius:4px;border-left:3px solid ${getStatusColor(q.species)};color:${getStatusColor(q.species)};display:inline-block">${statusText}</div>`:""}<br><span class="mono" style="font-size:11px;color:var(--tm)">${q.family}</span><a href="${xenoLink}" target="_blank" style="font-size:11px;color:var(--accentL);text-decoration:none;margin-left:8px">🔊 Xeno-Canto ↗</a></div>${confusionTip}${crit?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Critères d'identification</div><div style="font-size:15px;color:var(--t);line-height:1.6;margin-bottom:10px">${crit.i}</div>${crit.v?`<div class="mono" style="font-size:10px;letter-spacing:1px;color:var(--tm);text-transform:uppercase;margin-bottom:6px;margin-top:10px">Confusions possibles</div><div style="font-size:14px;color:var(--td);line-height:1.6;font-style:italic">${crit.v}</div>`:""}</div>`:""}</div><button class="next-btn" onclick="nextQ()">${ci<qs.length-1?"Question suivante →":"Voir les résultats"}</button>`;
 
 }
 
@@ -2329,7 +2442,12 @@ function showResults(){
   const totalScore=score;
   const pct=Math.round((totalScore/total)*100);const wrongs=hist.filter(h=>!h.ok);
   const cls=pct>=80?"good":pct>=50?"mid":"low";
-  const msg=pct===100?"Parfait ! Prêt·e pour le terrain !":pct>=80?"Excellent travail !":pct>=60?"Bonne progression !":pct>=40?"Continue, ça vient !":"Courage, révise avec les photos !";
+  const msg=isCompet?(
+    competLevel==='debutant'?(pct>=80?"🌱 Excellent ! Tu peux tenter le niveau Apprenti.":pct>=60?"🌱 Bonne progression ! Continue avec les espèces communes.":"🌱 Pas de souci, révise les fiches espèces.")
+    :competLevel==='apprenti'?(pct>=80?"🌿 Très bien ! Tu es prêt·e pour le Confirmé.":pct>=60?"🌿 Bien joué ! Attention aux confusions proches.":"🌿 Continue de travailler les espèces similaires.")
+    :competLevel==='confirme'?(pct>=70?"🌳 Bravo ! Le niveau Expert t'attend.":pct>=50?"🌳 Bon niveau, travaille les familles difficiles.":"🌳 La saisie libre demande de la pratique.")
+    :(pct>=80?"🦅 Impressionnant ! Niveau expert confirmé.":pct>=50?"🦅 Bon score expert. Les accidentels sont exigeants.":"🦅 Normal en expert ! Chaque erreur est un apprentissage.")
+  ):(pct===100?"Parfait ! Prêt·e pour le terrain !":pct>=80?"Excellent travail !":pct>=60?"Bonne progression !":pct>=40?"Continue, ça vient !":"Courage, révise avec les fiches !");
   let html=`<div style="text-align:center;margin-bottom:36px"><div class="mono label" style="margin-bottom:20px">${isCompet?"🏆 Résultats Compétition":isExam?"Résultats examen":"Résultats"}</div>`;
   if(isCompet){
     html+=`<div class="pct" style="color:#e8b84d">${competScore}<span class="unit" style="font-size:24px">pts</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total} bonnes réponses</div>`;
@@ -2429,7 +2547,11 @@ function startCompet(){
       return{species:sp,family:fam,answer:sp,options:opts};
     }
   });
-  showScreen("quiz");loadQuestion();
+  showScreen("quiz");
+  // Apply level-specific visual class
+  const quizEl=document.getElementById('quiz');
+  quizEl.className='screen active level-'+competLevel;
+  loadQuestion();
 }
 // Smart distractors: prioritize same family/genus for Apprenti level
 function getSmartDistractors(sp,pool,n){
