@@ -1861,12 +1861,41 @@ function startWeightedQuiz(pool){
 
 
 async function fetchImages(species){
-  if(imgCache[species])return imgCache[species];
+  // Don't cache for freeText modes (Confirmé/Expert) to get variety
+  if(imgCache[species]&&!isFreeText)return imgCache[species];
   try{
   const tryFetch=async(url)=>{try{const r=await fetch(url);if(r.ok)return await r.json();}catch(e){}return null;};
 
-  // Step 1: Get subcategories of the species category on Commons
-  // These often contain "in flight", "male", "female", "juvenile" etc.
+  // === iNaturalist FIRST (Research Grade = verified, field-realistic) ===
+  const inatUrls=[];
+  try{
+    const inatTaxon=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=1`);
+    if(inatTaxon?.results?.[0]?.id){
+      const taxonId=inatTaxon.results[0].id;
+      const rndPage=Math.floor(Math.random()*10)+1;
+      const inatObs=await tryFetch(`https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&quality_grade=research&photos=true&per_page=30&page=${rndPage}&order_by=random`);
+      if(inatObs?.results){
+        const seenObs=new Set();
+        for(const obs of inatObs.results){
+          if(obs.photos?.[0]?.url&&!seenObs.has(obs.id)){
+            seenObs.add(obs.id);
+            const photoUrl=obs.photos[0].url.replace('square','medium');
+            inatUrls.push(photoUrl);
+          }
+        }
+      }
+    }
+  }catch(e){}
+
+  // For Confirmé/Expert: use ONLY iNat if we have enough (≥2)
+  if(isFreeText&&inatUrls.length>=2){
+    const shuffled=inatUrls.sort(()=>Math.random()-0.5).slice(0,4);
+    const photoObjs=shuffled.map(u=>({url:u,tags:['general']}));
+    imgCache[species]=photoObjs;
+    return photoObjs;
+  }
+
+  // === Commons: subcategories for plumage diversity ===
   const subcatData=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(species)}&cmtype=subcat&cmlimit=30&format=json&origin=*`);
   
   const targetSubcats=[];
@@ -1892,8 +1921,8 @@ async function fetchImages(species){
     }
   }
 
-  // Step 2: Fetch files from targeted subcategories (1-2 from each)
-  const taggedFiles=[];  // {file, tag, score}
+  // Step 2: Fetch files from targeted subcategories
+  const taggedFiles=[];
   
   for(const sc of targetSubcats.slice(0,6)){
     const sd=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(sc.cat)}&cmtype=file&cmlimit=20&format=json&origin=*`);
@@ -1901,26 +1930,27 @@ async function fetchImages(species){
       const imgs=sd.query.categorymembers.map(f=>f.title).filter(t=>/\.(jpg|jpeg|png)$/i.test(t));
       for(const img of imgs){
         const s=scoreFilename(img,species);
-        if(s>-50)taggedFiles.push({file:img,tags:[sc.tag],score:s+15});  // bonus for being in a specific subcat
+        if(s>0)taggedFiles.push({file:img,tags:[sc.tag],score:s+15});
       }
     }
   }
 
-  // Step 3: Also fetch from main category
-  const mainData=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(species)}&cmtype=file&cmlimit=50&format=json&origin=*`);
+  // Step 3: Main category with random offset
+  const rndOffset=Math.floor(Math.random()*3)*20; // 0, 20, or 40
+  const mainData=await tryFetch(`https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(species)}&cmtype=file&cmlimit=50&cmcontinue=${rndOffset>0?'file||':''}${rndOffset>0?'page'+rndOffset:''}&format=json&origin=*`);
   if(mainData?.query?.categorymembers){
     const mainFiles=mainData.query.categorymembers.map(f=>f.title).filter(t=>/\.(jpg|jpeg|png)$/i.test(t));
     for(const f of mainFiles){
       if(!taggedFiles.some(tf=>tf.file===f)){
         const s=scoreFilename(f,species);
         const tags=tagFilename(f);
-        if(s>-50)taggedFiles.push({file:f,tags,score:s});
+        if(s>0)taggedFiles.push({file:f,tags,score:s});
       }
     }
   }
 
-  // Step 4: Also try Wikipedia EN article images
-  if(taggedFiles.length<6){
+  // Step 4: Wikipedia EN — ONLY if very few Commons results, and filter aggressively
+  if(taggedFiles.length<3){
     const wpData=await tryFetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(species)}&prop=images&imlimit=15&format=json&origin=*`);
     if(wpData?.query?.pages){
       const pg=Object.values(wpData.query.pages)[0];
@@ -1929,16 +1959,26 @@ async function fetchImages(species){
         for(const f of wpFiles){
           if(!taggedFiles.some(tf=>tf.file===f)){
             const s=scoreFilename(f,species);
-            if(s>-50)taggedFiles.push({file:f,tags:tagFilename(f),score:s});
+            // Stricter threshold for Wikipedia images (more junk)
+            if(s>10)taggedFiles.push({file:f,tags:tagFilename(f),score:s});
           }
         }
       }
     }
   }
 
-  // Step 5: Sort and select diverse set
+  // Step 5: Sort, shuffle within score tiers for variety, then select diverse
   taggedFiles.sort((a,b)=>b.score-a.score);
-  const selected=selectDiverse(taggedFiles,4);
+  // Add randomness: shuffle within similar-score groups
+  const shuffled=[];
+  for(let i=0;i<taggedFiles.length;){
+    let j=i;
+    while(j<taggedFiles.length&&taggedFiles[j].score>=taggedFiles[i].score-5)j++;
+    const tier=taggedFiles.slice(i,j).sort(()=>Math.random()-0.5);
+    shuffled.push(...tier);
+    i=j;
+  }
+  const selected=selectDiverse(shuffled,4);
 
   // Step 6: Resolve URLs
   const urls=[];
@@ -1955,7 +1995,6 @@ async function fetchImages(species){
     }
   }
 
-  // Cap at 4 photos max
   if(urls.length>4)urls.length=4;
 
   // Fallback: REST API summary image
@@ -1965,38 +2004,14 @@ async function fetchImages(species){
     else if(rest?.thumbnail?.source)urls.push(rest.thumbnail.source.replace(/\/\d+px-/,'/900px-'));
   }
 
-  // === iNaturalist supplement: add random research-grade photos ===
-  try{
-    const inatTaxon=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=1`);
-    if(inatTaxon?.results?.[0]?.id){
-      const taxonId=inatTaxon.results[0].id;
-      // Fetch random page of research-grade photo observations
-      const rndPage=Math.floor(Math.random()*8)+1;
-      const inatObs=await tryFetch(`https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&quality_grade=research&photos=true&per_page=20&page=${rndPage}&order_by=random`);
-      if(inatObs?.results){
-        const inatPhotos=[];
-        const seenObs=new Set();
-        for(const obs of inatObs.results){
-          if(obs.photos?.[0]?.url&&!seenObs.has(obs.id)){
-            seenObs.add(obs.id);
-            const photoUrl=obs.photos[0].url.replace('square','medium');
-            // Check not already in urls (by photo ID)
-            const photoId=photoUrl.match(/photos\/(\d+)\//)?.[1];
-            const isDup=urls.some(u=>{const m=u.match(/photos\/(\d+)\//);return m&&m[1]===photoId;});
-            if(!isDup&&!urls.includes(photoUrl)){
-              inatPhotos.push(photoUrl);
-            }
-          }
-        }
-        // Shuffle and take enough to fill up to 4 total photos
-        const shuffledINat=inatPhotos.sort(()=>Math.random()-0.5);
-        const maxINat=Math.max(2,4-urls.length);
-        for(const u of shuffledINat.slice(0,maxINat)){
-          urls.push(u);
-        }
-      }
+  // Add iNat photos to fill up
+  if(inatUrls.length){
+    const shuffledINat=inatUrls.sort(()=>Math.random()-0.5);
+    const maxINat=Math.max(2,4-urls.length);
+    for(const u of shuffledINat.slice(0,maxINat)){
+      if(!urls.includes(u))urls.push(u);
     }
-  }catch(e){}
+  }
 
 
   // Build photo objects with tags
@@ -2079,7 +2094,13 @@ function scoreFilename(fn,species){
   // Habitat/landscape without the bird
   if(/\bhabitat\b|paysage|landscape|biotope|panorama/.test(f)&&!/in habitat|dans/.test(f))return -200;
   // Wikimedia logos and icons
-  if(/wikimedia|commons|logo|icon|pictogram/.test(f))return -200;
+  if(/wikimedia|commons|logo|icon|pictogram|symbol|badge|button|banner|arrow|ui[\s_]/.test(f))return -200;
+  // Wiki page elements, conservation status, info boxes
+  if(/status[\s_]iucn|red[\s_]list|conservation|extinct|endangered|vulnerable|least[\s_]concern|near[\s_]threatened|screenshot|capture[\s_]d|wayback|archive\.org/.test(f))return -200;
+  // Generic placeholder names
+  if(/^file:[\w]{1,3}\.(jpg|png)$/i.test(fn))return -200;
+  // Audio files misnamed as images
+  if(/song|call|voice|chant|cri[\s_]|xeno[\s_]?canto|audio|sound/.test(f))return -200;
   
   // === WRONG SPECIES CHECK ===
   // Reject if filename contains genus of a DIFFERENT bird species (any family)
@@ -2290,12 +2311,17 @@ function loadQuestion(){
   document.getElementById("photoSpinner").style.display="";
   fetchImages(q.species).then(photos=>{
     const p=photos||[];
-    if(isFreeText&&p.length>1){
-      // Confirmé/Expert: pick 1 random photo (not always the "best" one)
-      const idx=Math.floor(Math.random()*p.length);
-      curPhotos=[p[idx]];
-    }else if(isFreeText){
-      curPhotos=p.slice(0,1);
+    if(isFreeText){
+      // Confirmé/Expert: prefer iNat photos (field-realistic, research-grade)
+      const inatPhotos=p.filter(ph=>{const u=typeof ph==='string'?ph:ph.url;return u.includes('inaturalist');});
+      const pool=inatPhotos.length?inatPhotos:p;
+      // Pick 1 random photo from preferred pool
+      if(pool.length>1){
+        const idx=Math.floor(Math.random()*pool.length);
+        curPhotos=[pool[idx]];
+      }else{
+        curPhotos=pool.slice(0,1);
+      }
     }else if(isCompet&&competLevel==='apprenti'){
       curPhotos=p.slice(0,3);
     }else{
