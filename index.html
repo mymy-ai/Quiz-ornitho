@@ -217,13 +217,16 @@ window.onerror=function(msg,url,line,col,err){
       <div id="examPanel" style="display:none">
         <div class="info-box">
           <strong style="color:var(--accentL);font-weight:500">🎓 Mode Certification</strong><br>
-          <span style="color:var(--t)">Simulation d'épreuve d'identification</span><br>
-          • Pas de feedback immédiat (bonne/mauvaise réponse)<br>
-          • Chronomètre global visible<br>
-          • Résultats détaillés uniquement à la fin<br>
-          • Mix de 20 espèces (faciles → difficiles)
+          <span style="color:var(--t)">Simulation d'épreuve d'identification (40 questions)</span><br>
+          • <strong>10 faciles</strong> — espèces communes, QCM<br>
+          • <strong>10 intermédiaires</strong> — distracteurs réalistes, QCM<br>
+          • <strong>10 confirmé</strong> — 1 photo, réponse libre<br>
+          • <strong>5 difficiles</strong> — espèces régulières, réponse libre<br>
+          • <strong>5 très difficiles</strong> — occasionnelles/rares, réponse libre<br>
+          • Seuil de réussite : <strong>35/40</strong><br>
+          • Pas de feedback immédiat · Chronomètre global · Résultats détaillés à la fin
         </div>
-        <button class="start-btn" onclick="startExam()">Lancer la certification (20 questions)</button>
+        <button class="start-btn" onclick="startExam()">Lancer la certification (40 questions)</button>
       </div>
       <div id="competPanel" style="display:none">
         <div class="info-box">
@@ -245,6 +248,34 @@ window.onerror=function(msg,url,line,col,err){
           <input id="competName" type="text" placeholder="Entrez votre pseudo" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:15px;font-family:inherit;box-sizing:border-box" maxlength="20">
         </div>
         <button class="start-btn" style="background:#e8b84d;color:#000" onclick="startCompet()">🏆 Lancer la compétition</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+          <button class="start-btn" style="background:#7b68ee;color:#fff;font-size:13px;padding:10px" onclick="startPassAndPlay()">👥 Multi local</button>
+          <button class="start-btn" style="background:#20b2aa;color:#fff;font-size:13px;padding:10px" onclick="showSeedChallenge()">🎯 Code défi</button>
+        </div>
+        <div id="seedChallengeBox" style="display:none;margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:12px;color:var(--tm);margin-bottom:8px">🎯 <strong>Code Défi</strong> : génère un code unique. Partage-le pour que d'autres jouent exactement les mêmes questions et comparent leurs scores.</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button class="mode-btn" style="flex:1;font-size:12px" onclick="generateSeedCode()">Générer un code</button>
+            <button class="mode-btn" style="flex:1;font-size:12px" onclick="document.getElementById('seedInput').style.display='block'">J'ai un code</button>
+          </div>
+          <div id="seedDisplay" style="display:none;text-align:center;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:8px">
+            <span style="font-family:monospace;font-size:18px;color:#20b2aa;letter-spacing:2px" id="seedCodeText"></span>
+            <button style="margin-left:8px;background:none;border:none;color:var(--tm);cursor:pointer;font-size:14px" onclick="navigator.clipboard?.writeText(document.getElementById('seedCodeText').textContent)">📋</button>
+          </div>
+          <div id="seedInput" style="display:none">
+            <input id="seedCodeInput" type="text" placeholder="Colle le code défi ici" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--t);font-family:monospace;font-size:16px;text-align:center;letter-spacing:2px;box-sizing:border-box" maxlength="8" onkeydown="if(event.key==='Enter')startSeedChallenge()">
+            <button class="start-btn" style="margin-top:6px;background:#20b2aa;color:#fff;font-size:13px" onclick="startSeedChallenge()">▶ Jouer ce défi</button>
+          </div>
+        </div>
+        <div id="passPlaySetup" style="display:none;margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:12px;color:var(--tm);margin-bottom:8px">👥 <strong>Multi local</strong> : chaque joueur répond aux mêmes questions à tour de rôle sur cet appareil.</div>
+          <div id="ppPlayers" style="margin-bottom:8px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input id="ppNewPlayer" type="text" placeholder="Nom du joueur" style="flex:1;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:14px" maxlength="20" onkeydown="if(event.key==='Enter')addPassPlayPlayer()">
+            <button class="mode-btn" style="font-size:13px;padding:6px 12px" onclick="addPassPlayPlayer()">+ Ajouter</button>
+          </div>
+          <button class="start-btn" style="background:#7b68ee;color:#fff;font-size:13px" onclick="startPassPlay()" id="ppStartBtn" disabled>Commencer (min. 2 joueurs)</button>
+        </div>
         <div id="leaderboard" style="margin-top:24px"></div>
       </div>
       <div id="librePanel">
@@ -253,6 +284,7 @@ window.onerror=function(msg,url,line,col,err){
           <div class="mode-grid" id="modeGrid"></div>
         </div>
         <div style="text-align:center;margin-top:32px;padding-top:16px;border-top:1px solid var(--border)">
+          <button onclick="showClassifTable()" style="background:none;border:none;color:var(--accentL);font-size:13px;font-family:inherit;cursor:pointer;margin-bottom:8px;display:block;width:100%;text-align:center">📊 Tableau de classification des espèces</button>
           <button onclick="showScreen('about')" style="background:none;border:none;color:var(--tm);font-size:12px;font-family:inherit;cursor:pointer">À propos & crédits</button>
         </div>
       </div>
@@ -328,6 +360,31 @@ window.onerror=function(msg,url,line,col,err){
     </div>
     <div style="padding:16px;max-width:700px;margin:0 auto" id="profileContent"></div>
   </div>
+  <div id="classifTable" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('home')">← Menu</button>
+      <div style="flex:1;text-align:center;font-size:15px;color:var(--accentL)">📊 Classification des espèces</div>
+    </div>
+    <div style="padding:12px;max-width:1000px;margin:0 auto">
+      <div style="margin-bottom:12px;font-size:12px;color:var(--tm);line-height:1.8">
+        <strong>Légende statut (PRES) :</strong> A = Commune/très fréquente · B = Moins commune/locale · C = Rare mais régulière · D = Accidentelle<br>
+        <strong>Difficulté :</strong> 1 = Facile · 2 = Intermédiaire · 3 = Difficile · 4 = Très difficile<br>
+        <strong>Niveaux :</strong> Débutant (D1+A) · Apprenti (D1-2+AB) · Confirmé (D1-3+AB) · Expert (tout)
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <input id="classifSearch" type="text" placeholder="🔍 Rechercher..." oninput="filterClassifTable()" style="flex:1;min-width:200px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:13px">
+        <select id="classifModule" onchange="filterClassifTable()" style="padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:12px">
+          <option value="all">Tous</option><option value="metro">France métro.</option><option value="om">Outre-mer</option>
+        </select>
+        <select id="classifDiff" onchange="filterClassifTable()" style="padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--t);font-size:12px">
+          <option value="all">Toutes diff.</option><option value="1">1 - Facile</option><option value="2">2 - Intermédiaire</option><option value="3">3 - Difficile</option><option value="4">4 - Très difficile</option>
+        </select>
+        <button onclick="exportClassifCSV()" style="padding:8px 12px;background:var(--accentD);border:1px solid var(--accent);border-radius:6px;color:var(--accentL);font-size:12px;cursor:pointer">📥 CSV</button>
+      </div>
+      <div id="classifCount" style="font-size:11px;color:var(--tm);margin-bottom:6px"></div>
+      <div id="classifBody" style="max-height:calc(100vh - 280px);overflow-y:auto;font-size:12px"></div>
+    </div>
+  </div>
   <div id="about" class="screen">
     <div class="top-bar">
       <button class="back-btn" onclick="showScreen('home')">← Menu</button>
@@ -377,7 +434,12 @@ const PHOTO_BL={
 "Apus apus":["Beynac_Mauersegler_2"],
 "Crithagra canicollis":["Arenaria_interpres"],"Riparia riparia":["Sand_Martin_nest","Riparia_riparia_plant"],
 "Spinus spinus":["Serinus_serinus","Serin_cini","American_Goldfinch","Spinus_tristis"],"Bubo bubo":["Anas","duck","canard","Stockente"],
-"Serinus serinus":["Spinus_spinus","Tarin_des_aulnes","Carduelis_spinus"]
+"Serinus serinus":["Spinus_spinus","Tarin_des_aulnes","Carduelis_spinus"],
+"Tetrao urogallus":["hunter","chasseur","group","groupe","Birkhahn","Birkhuhn","people","person","men","women","crowd","Jagd","hunting","chasse","Lyrurus","tetrix"],
+"Gavia immer":["map","Map","distribution","range","carte","répartition"],
+"Coturnix coturnix":["butterfly","papillon","Lepidoptera","moth","caterpillar","chenille","egg","oeuf"],
+"Dryocopus martius":["tree_only","arbre_seul","hole_only","trou_seul","Buntspecht","Dendrocopos"],
+"Phylloscopus collybita":["map","Map","distribution","range","carte","répartition","Verbreitungsgebiet","area_of"]
 };
 
 // Noms créoles et locaux (Réunion, Mayotte, Antilles, Guyane)
@@ -1630,6 +1692,33 @@ function initHome(){
     // All OM
     addSectionLabel(grid,"Tous les Outre-mer");
     addModeBtn(grid,"🌍","Toutes les espèces OM",allOM.length,()=>startQuiz(()=>allOM));
+    // Multi-territory selector
+    const selectorDiv=document.createElement("div");
+    selectorDiv.style.cssText="grid-column:1/-1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:8px 0";
+    selectorDiv.innerHTML=`<div style="font-size:12px;color:var(--tm);margin-bottom:8px;font-weight:500">🗺️ Quiz personnalisé multi-territoires</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="omTerritoryChecks">
+        <label style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;border:1px solid var(--border)"><input type="checkbox" value="RE" class="omTerrCheck" checked> 🇷🇪 Réunion</label>
+        <label style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;border:1px solid var(--border)"><input type="checkbox" value="YT" class="omTerrCheck"> 🇾🇹 Mayotte</label>
+        <label style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;border:1px solid var(--border)"><input type="checkbox" value="AN" class="omTerrCheck"> 🇬🇵 Antilles</label>
+        <label style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;border:1px solid var(--border)"><input type="checkbox" value="GF" class="omTerrCheck"> 🇬🇫 Guyane</label>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="start-btn" style="flex:1;font-size:13px;padding:8px" onclick="startOMCustom()">▶ Lancer le quiz</button>
+        <button class="start-btn" style="flex:1;font-size:13px;padding:8px;background:var(--accentD);color:var(--accentL)" onclick="startOMCustomWeighted()">⚖️ Quiz pondéré</button>
+      </div>
+      <div id="omCustomCount" style="font-size:11px;color:var(--tm);margin-top:6px;text-align:center"></div>`;
+    grid.appendChild(selectorDiv);
+    // Update count when checkboxes change
+    setTimeout(()=>{
+      const updateCount=()=>{
+        const checked=[...document.querySelectorAll('.omTerrCheck:checked')].map(c=>c.value);
+        const pool=ALL_BIRDS.filter(s=>REG[s]&&checked.some(t=>REG[s].includes(t)));
+        const el=document.getElementById('omCustomCount');
+        if(el)el.textContent=pool.length+' espèces sélectionnées';
+      };
+      document.querySelectorAll('.omTerrCheck').forEach(c=>c.addEventListener('change',updateCount));
+      updateCount();
+    },100);
     // Per territory
     territories.forEach(t=>{
       const pool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes(t.id));
@@ -1794,16 +1883,38 @@ function startExam(){
   imgCache={};
   isExam=true;isCompet=false;isFreeText=false;milieuScore=0;score=0;streak=0;best=0;hist=[];ci=0;
   window._examStartTime=Date.now();
-  const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M'));
-  const easy=shuffle(metroPool.filter(s=>getDiff(s)===1)).slice(0,10);
-  const med=shuffle(metroPool.filter(s=>getDiff(s)===2)).slice(0,5);
-  const hard=shuffle(metroPool.filter(s=>getDiff(s)===3)).slice(0,5);
-  const all=[...easy,...med,...hard];
-  qs=all.map(sp=>{
+  const metroPool=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M')&&!ACC[s]);
+  // 40 questions: 10 easy QCM + 10 intermediate QCM + 10 confirmed free + 5 hard free + 5 very hard free
+  const d1=metroPool.filter(s=>getDiff(s)===1&&(PRES[s]||'A')==='A');
+  const d2=metroPool.filter(s=>getDiff(s)===2&&'AB'.includes(PRES[s]||'A'));
+  const d3conf=metroPool.filter(s=>getDiff(s)===2&&'AB'.includes(PRES[s]||'A'));
+  const d3hard=metroPool.filter(s=>getDiff(s)===3);
+  const d4=metroPool.filter(s=>getDiff(s)>=3&&(PRES[s]||'A')!=='A'); // rare + difficult
+  const easyPick=shuffle(d1).slice(0,10);
+  const medPick=shuffle(d2.filter(s=>!easyPick.includes(s))).slice(0,10);
+  const confPool=metroPool.filter(s=>!easyPick.includes(s)&&!medPick.includes(s)&&getDiff(s)<=3);
+  const confPick=shuffle(confPool).slice(0,10);
+  const hardPool=d3hard.filter(s=>!easyPick.includes(s)&&!medPick.includes(s)&&!confPick.includes(s));
+  const hardPick=shuffle(hardPool).slice(0,5);
+  const vhardPool=d4.filter(s=>!easyPick.includes(s)&&!medPick.includes(s)&&!confPick.includes(s)&&!hardPick.includes(s));
+  const vhardPick=shuffle(vhardPool).slice(0,5);
+  // Build questions with appropriate modes
+  const allPicked=[...easyPick,...medPick,...confPick,...hardPick,...vhardPick];
+  if(allPicked.length<30){alert("Pas assez d'espèces pour la certification.");return;}
+  qs=allPicked.map((sp,idx)=>{
     const fam=FAM[sp];
-    const distractors=getDistractors(sp,metroPool,3);
-    const opts=shuffle([sp,...distractors]);
-    return{species:sp,family:fam,answer:sp,options:opts};
+    if(idx<10){
+      // Easy: QCM with realistic distractors
+      const distractors=getEasyDistractors(sp,metroPool,3);
+      return{species:sp,family:fam,answer:sp,options:shuffle([sp,...distractors]),examSection:'easy'};
+    }else if(idx<20){
+      // Intermediate: QCM with smart distractors
+      const distractors=getSmartDistractors(sp,metroPool,3);
+      return{species:sp,family:fam,answer:sp,options:shuffle([sp,...distractors]),examSection:'medium'};
+    }else{
+      // Confirmé, hard, very hard: free text
+      return{species:sp,family:fam,answer:sp,options:null,freeText:true,examSection:idx<30?'confirmed':idx<35?'hard':'vhard'};
+    }
   });
   showScreen("quiz");loadQuestion();
 }
@@ -1831,6 +1942,21 @@ function startQuiz(filterFn){
     return{species:sp,family:fam,answer:sp,options:opts};
   });
   showScreen("quiz");loadQuestion();
+}
+
+function startOMCustom(){
+  const checked=[...document.querySelectorAll('.omTerrCheck:checked')].map(c=>c.value);
+  if(!checked.length){alert("Sélectionne au moins un territoire.");return;}
+  const pool=ALL_BIRDS.filter(s=>REG[s]&&checked.some(t=>REG[s].includes(t)));
+  if(pool.length<4){alert("Pas assez d'espèces pour ces territoires.");return;}
+  startQuiz(()=>pool);
+}
+function startOMCustomWeighted(){
+  const checked=[...document.querySelectorAll('.omTerrCheck:checked')].map(c=>c.value);
+  if(!checked.length){alert("Sélectionne au moins un territoire.");return;}
+  const pool=ALL_BIRDS.filter(s=>REG[s]&&checked.some(t=>REG[s].includes(t)));
+  if(pool.length<4){alert("Pas assez d'espèces pour ces territoires.");return;}
+  startWeightedQuiz(pool);
 }
 
 function startWeightedQuiz(pool){
@@ -1883,8 +2009,16 @@ async function fetchImages(species){
         const seenObs=new Set();
         for(const obs of inatObs.results){
           if(obs.photos?.[0]?.url&&!seenObs.has(obs.id)){
+            // Quality filtering: skip low-quality observations
+            if(INAT_OBS_BLACKLIST.has(obs.id))continue;
+            const agreements=obs.num_identification_agreements||0;
+            const disagreements=obs.num_identification_disagreements||0;
+            if(agreements<INAT_MIN_AGREEMENTS)continue;
+            if(disagreements>agreements)continue; // More disagreements than agreements = dubious
             seenObs.add(obs.id);
             const photoUrl=obs.photos[0].url.replace('square','medium');
+            // Skip tiny photos (square format only = likely low quality)
+            if(photoUrl.includes('/square'))continue;
             inatUrls.push(photoUrl);
           }
         }
@@ -2106,6 +2240,16 @@ function scoreFilename(fn,species){
   if(/^file:[\w]{1,3}\.(jpg|png)$/i.test(fn))return -200;
   // Audio files misnamed as images
   if(/song|call|voice|chant|cri[\s_]|xeno[\s_]?canto|audio|sound/.test(f))return -200;
+  // People, crowd, group photos (not bird photos)
+  if(/\bpeople\b|\bperson\b|\bcrowd\b|\bgroup\b|\bteam\b|\bhiker\b|\btourist\b|\bbird.?watch/.test(f)&&!/feeding|bird/.test(f))return -200;
+  // Captive/zoo/falconry photos (less useful for field ID)
+  if(/\bcaptive\b|zoo[\s_.]|falconry|fauconnerie|aviary|volière|cage[\s_]|enclos/.test(f))return -60;
+  // Dead birds, road kill
+  if(/\bdead\b|\bmort\b|roadkill|écrasé|carcass/.test(f))return -200;
+  // Radar, satellite, aerial survey imagery
+  if(/\bradar\b|satellite|aerial survey|lidar/.test(f))return -200;
+  // Scientific papers, abstracts
+  if(/\babstract\b|journal[\s_]of|proceedings|scientific[\s_]paper|doi[\s_]/.test(f))return -200;
   
   // === WRONG SPECIES CHECK ===
   // Reject if filename contains genus of a DIFFERENT bird species (any family)
@@ -2343,8 +2487,7 @@ function loadQuestion(){
   document.getElementById("photoSpinner").style.display="";
   fetchImages(q.species).then(photos=>{
     const p=photos||[];
-    if(isFreeText){
-      // Confirmé/Expert: prefer iNat photos (field-realistic, research-grade)
+    if(isFreeText||q.freeText){
       const inatPhotos=p.filter(ph=>{const u=typeof ph==='string'?ph:ph.url;return u.includes('inaturalist');});
       const pool=inatPhotos.length?inatPhotos:p;
       // Pick 1 random photo from preferred pool
@@ -2573,6 +2716,8 @@ function answerMilieu(opt,btn){
 
 function showResults(){
   stopTimer();
+  // Pass-and-play: intercept to go to next player
+  if(isPassPlay){ppEndRound();return;}
   endSession();
   showScreen("results");
   const total=qs.length;
@@ -2589,21 +2734,37 @@ function showResults(){
   if(isCompet){
     html+=`<div class="pct" style="color:#e8b84d">${competScore}<span class="unit" style="font-size:24px">pts</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total} bonnes réponses</div>`;
     html+=`<div style="font-size:14px;color:var(--tm);margin:8px 0">Joueur : <strong style="color:var(--t)">${competName}</strong></div>`;
+    if(window._challengeCode){
+      html+=`<div style="margin:12px auto;padding:10px 16px;background:var(--card);border:1px solid #20b2aa33;border-radius:8px;display:inline-block">
+        <div style="font-size:11px;color:var(--tm);margin-bottom:4px">🎯 Code défi</div>
+        <span style="font-family:monospace;font-size:20px;color:#20b2aa;letter-spacing:3px">${window._challengeCode}</span>
+        <button style="margin-left:8px;background:none;border:none;color:var(--tm);cursor:pointer;font-size:14px" onclick="navigator.clipboard?.writeText('${window._challengeCode}')">📋</button>
+      </div>`;
+      window._challengeCode=null;
+    }
     // Save score
     saveCompetScore(competName,competScore);
   } else {
     html+=`<div class="pct ${cls}">${pct}<span class="unit">%</span></div><div style="font-size:18px;color:var(--td);margin:6px 0">${totalScore} / ${total}</div>`;
   }
   if(isExam){
-    const easyScore=hist.slice(0,10).filter(h=>h.ok).length;
-    const medScore=hist.slice(10,15).filter(h=>h.ok).length;
-    const hardScore=hist.slice(15,20).filter(h=>h.ok).length;
+    const easyScore=hist.filter(h=>h.examSection==='easy'&&h.ok).length;
+    const medScore=hist.filter(h=>h.examSection==='medium'&&h.ok).length;
+    const confScore=hist.filter(h=>h.examSection==='confirmed'&&h.ok).length;
+    const hardScore=hist.filter(h=>h.examSection==='hard'&&h.ok).length;
+    const vhardScore=hist.filter(h=>h.examSection==='vhard'&&h.ok).length;
     const examDuration=window._examStartTime?Math.round((Date.now()-window._examStartTime)/1000):0;
     const mins=Math.floor(examDuration/60);const secs=examDuration%60;
-    const passed=pct>=70;
+    const passed=totalScore>=35;
     html+=`<div style="margin:12px auto 6px;font-size:14px;color:var(--tm)">⏱️ Temps total : <strong style="color:var(--t)">${mins}:${String(secs).padStart(2,'0')}</strong></div>`;
-    html+=`<div style="margin:8px auto 16px;font-size:16px;font-weight:600;color:${passed?'var(--yes)':'var(--no)'}">${passed?'✓ CERTIFICATION RÉUSSIE':'✗ CERTIFICATION NON OBTENUE'}</div>`;
-    html+=`<div style="margin:16px auto;max-width:280px;text-align:left;font-size:13px;line-height:2"><span style="color:var(--accentL)">Faciles :</span> ${easyScore}/10<br><span style="color:var(--gold)">Moyennes :</span> ${medScore}/5<br><span style="color:var(--no)">Difficiles :</span> ${hardScore}/5<br></div>`;
+    html+=`<div style="margin:8px auto 16px;font-size:16px;font-weight:600;color:${passed?'var(--yes)':'var(--no)'}">${passed?'✓ CERTIFICATION RÉUSSIE (≥35/40)':'✗ CERTIFICATION NON OBTENUE (<35/40)'}</div>`;
+    html+=`<div style="margin:16px auto;max-width:340px;text-align:left;font-size:13px;line-height:2.2">
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--accentL)">🌱 Faciles (QCM)</span><strong>${easyScore}/10</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--gold)">🌿 Intermédiaires (QCM)</span><strong>${medScore}/10</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#e8a84d">🌳 Confirmé (libre)</span><strong>${confScore}/10</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--no)">🔴 Difficiles (libre)</span><strong>${hardScore}/5</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#c44">🦅 Très difficiles (libre)</span><strong>${vhardScore}/5</strong></div>
+    </div>`;
   }
   if(best>1)html+=`<div class="mono" style="font-size:12px;color:var(--gold);margin-bottom:24px">Meilleure série : ${best}</div>`;
   html+=`<div style="font-size:16px;color:var(--td);font-style:italic">${msg}</div></div>`;
@@ -2627,6 +2788,83 @@ function showResults(){
 }
 
 function toggleErrors(){const d=document.getElementById("errorsDiv");d.style.display=d.style.display==="none"?"block":"none";}
+
+// === CLASSIFICATION TABLE ===
+function showClassifTable(){
+  showScreen('classifTable');
+  filterClassifTable();
+}
+function getSpeciesLevels(sp){
+  const d=getDiff(sp);const p=PRES[sp]||'';const isMetro=REG[sp]&&REG[sp].includes('M');
+  if(!isMetro)return'OM';
+  const levels=[];
+  if(d===1&&p==='A')levels.push('Débutant');
+  if(d<=2&&'AB'.includes(p))levels.push('Apprenti');
+  if(d<=3&&'AB'.includes(p))levels.push('Confirmé');
+  levels.push('Expert');
+  return levels.join(', ');
+}
+function filterClassifTable(){
+  const search=(document.getElementById('classifSearch').value||'').toLowerCase();
+  const modFilter=document.getElementById('classifModule').value;
+  const diffFilter=document.getElementById('classifDiff').value;
+  let species=[...ALL_BIRDS];
+  if(modFilter==='metro')species=species.filter(s=>REG[s]&&REG[s].includes('M'));
+  else if(modFilter==='om')species=species.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
+  if(diffFilter!=='all')species=species.filter(s=>getDiff(s)===parseInt(diffFilter));
+  if(search)species=species.filter(s=>(NOM[s]||'').toLowerCase().includes(search)||s.toLowerCase().includes(search)||
+    (FAM[s]||'').toLowerCase().includes(search));
+  species.sort((a,b)=>(NOM[a]||a).localeCompare(NOM[b]||b,'fr'));
+  document.getElementById('classifCount').textContent=species.length+' espèces';
+  const diffCol={1:'var(--accentL)',2:'var(--gold)',3:'var(--no)',4:'#c44'};
+  const diffLab={1:'Facile',2:'Intermédiaire',3:'Difficile',4:'Très difficile'};
+  let html='<table style="width:100%;border-collapse:collapse"><thead><tr style="position:sticky;top:0;background:var(--bg);z-index:1">';
+  html+='<th style="text-align:left;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Espèce</th>';
+  html+='<th style="text-align:left;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Famille</th>';
+  html+='<th style="text-align:center;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Localité</th>';
+  html+='<th style="text-align:center;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Statut</th>';
+  html+='<th style="text-align:center;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Diff.</th>';
+  html+='<th style="text-align:left;padding:6px 4px;border-bottom:2px solid var(--border);font-size:11px;color:var(--tm)">Niveaux</th>';
+  html+='</tr></thead><tbody>';
+  species.forEach(sp=>{
+    const d=getDiff(sp);const p=PRES[sp]||'-';
+    const reg=REG[sp]||'';
+    const locs=[];
+    if(reg.includes('M'))locs.push('🇫🇷');
+    if(reg.includes('RE'))locs.push('🇷🇪');
+    if(reg.includes('YT'))locs.push('🇾🇹');
+    if(reg.includes('AN'))locs.push('🇬🇵');
+    if(reg.includes('GF'))locs.push('🇬🇫');
+    html+=`<tr style="border-bottom:1px solid var(--border)22">
+      <td style="padding:5px 4px"><strong style="font-size:12px">${NOM[sp]||sp}</strong><br><em style="font-size:10px;color:var(--tm)">${sp}</em></td>
+      <td style="padding:5px 4px;font-size:11px;color:var(--td)">${FAM[sp]||'-'}</td>
+      <td style="padding:5px 4px;text-align:center;font-size:13px">${locs.join(' ')}</td>
+      <td style="padding:5px 4px;text-align:center;font-size:11px">${p}</td>
+      <td style="padding:5px 4px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;background:${diffCol[d]||'var(--tm)'}22;color:${diffCol[d]||'var(--tm)'}">${d} – ${diffLab[d]||'?'}</span></td>
+      <td style="padding:5px 4px;font-size:10px;color:var(--tm)">${getSpeciesLevels(sp)}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('classifBody').innerHTML=html;
+}
+function exportClassifCSV(){
+  const modFilter=document.getElementById('classifModule').value;
+  let species=[...ALL_BIRDS];
+  if(modFilter==='metro')species=species.filter(s=>REG[s]&&REG[s].includes('M'));
+  else if(modFilter==='om')species=species.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
+  species.sort((a,b)=>(NOM[a]||a).localeCompare(NOM[b]||b,'fr'));
+  const diffLab={1:'Facile',2:'Intermédiaire',3:'Difficile',4:'Très difficile'};
+  let csv='\uFEFF"Nom français";"Nom scientifique";"Famille";"Localités";"Statut (PRES)";"Difficulté";"Niveaux"\n';
+  species.forEach(sp=>{
+    const reg=REG[sp]||'';
+    const locs=[];if(reg.includes('M'))locs.push('France');if(reg.includes('RE'))locs.push('Réunion');
+    if(reg.includes('YT'))locs.push('Mayotte');if(reg.includes('AN'))locs.push('Antilles');if(reg.includes('GF'))locs.push('Guyane');
+    const d=getDiff(sp);
+    csv+=`"${(NOM[sp]||sp).replace(/"/g,'""')}";"${sp}";"${FAM[sp]||''}";"${locs.join(', ')}";"${PRES[sp]||'-'}";"${d} – ${diffLab[d]||'?'}";"${getSpeciesLevels(sp)}"\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='classification_especes.csv';a.click();
+}
 
 initHome();
 
@@ -2731,6 +2969,226 @@ function startCompet(){
   quizEl.className='screen active level-'+competLevel;
   loadQuestion();
 }
+// === SEEDED PRNG (Mulberry32) ===
+function mulberry32(seed){
+  return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+}
+let _seededRng=null;
+function seededRandom(){return _seededRng?_seededRng():Math.random();}
+function seededShuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(seededRandom()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// === SEED CHALLENGE MODE ===
+function showSeedChallenge(){
+  const box=document.getElementById('seedChallengeBox');
+  box.style.display=box.style.display==='none'?'block':'none';
+  document.getElementById('passPlaySetup').style.display='none';
+}
+function generateSeedCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code='';for(let i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('seedCodeText').textContent=code;
+  document.getElementById('seedDisplay').style.display='block';
+}
+function seedFromCode(code){
+  let h=0;for(let i=0;i<code.length;i++){h=((h<<5)-h)+code.charCodeAt(i);h|=0;}
+  return Math.abs(h);
+}
+function startSeedChallenge(){
+  let code=(document.getElementById('seedCodeInput').value||'').trim().toUpperCase();
+  if(code.length<3){alert('Entre un code défi valide.');return;}
+  const name=(document.getElementById('competName').value||'').trim();
+  if(!name){alert('Choisis un pseudo !');return;}
+  const seed=seedFromCode(code+competLevel);
+  _seededRng=mulberry32(seed);
+  competName=name;
+  window._challengeCode=code;
+  // Build questions deterministically
+  imgCache={};isExam=false;isCompet=true;competScore=0;score=0;streak=0;best=0;hist=[];ci=0;
+  isFreeText=(competLevel==='confirme'||competLevel==='expert');
+  const metroP=currentModule==='metro'?ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M')):ALL_BIRDS.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
+  let pool;
+  if(competLevel==='debutant')pool=metroP.filter(s=>(PRES[s]||'A')==='A'&&getDiff(s)===1);
+  else if(competLevel==='apprenti')pool=metroP.filter(s=>'AB'.includes(PRES[s]||'A')&&getDiff(s)<=2);
+  else if(competLevel==='confirme')pool=metroP.filter(s=>'AB'.includes(PRES[s]||'A'));
+  else pool=metroP;
+  const picked=seededShuffle(pool).slice(0,20);
+  if(picked.length<4){alert("Pas assez d'espèces.");_seededRng=null;return;}
+  qs=picked.map(sp=>{
+    const fam=FAM[sp];
+    if(isFreeText)return{species:sp,family:fam,answer:sp,options:null,freeText:true};
+    let distractors;
+    if(competLevel==='debutant')distractors=getEasyDistractors(sp,pool,3);
+    else if(competLevel==='apprenti')distractors=getSmartDistractors(sp,pool,3);
+    else distractors=getDistractors(sp,pool.length>=10?pool:ALL_BIRDS,3);
+    const opts=seededShuffle([sp,...distractors]);
+    return{species:sp,family:fam,answer:sp,options:opts};
+  });
+  _seededRng=null; // photos stay random (can't seed external APIs)
+  showScreen('quiz');
+  loadQuestion();
+}
+
+// === PASS-AND-PLAY (Multi local) ===
+let ppPlayers=[];
+let ppCurrentIdx=0;
+let ppResults=[];
+let ppQuestions=null;
+let isPassPlay=false;
+function startPassAndPlay(){
+  const box=document.getElementById('passPlaySetup');
+  box.style.display=box.style.display==='none'?'block':'none';
+  document.getElementById('seedChallengeBox').style.display='none';
+  ppPlayers=[];
+  document.getElementById('ppPlayers').innerHTML='';
+  document.getElementById('ppStartBtn').disabled=true;
+}
+function addPassPlayPlayer(){
+  const input=document.getElementById('ppNewPlayer');
+  const name=input.value.trim();
+  if(!name||ppPlayers.includes(name)){input.value='';return;}
+  if(ppPlayers.length>=6){alert('Maximum 6 joueurs.');return;}
+  ppPlayers.push(name);
+  input.value='';
+  renderPpPlayers();
+}
+function removePpPlayer(idx){
+  ppPlayers.splice(idx,1);
+  renderPpPlayers();
+}
+function renderPpPlayers(){
+  const el=document.getElementById('ppPlayers');
+  el.innerHTML=ppPlayers.map((p,i)=>`<span style="display:inline-block;padding:4px 10px;background:var(--bg);border-radius:99px;margin:2px 4px;font-size:13px;color:var(--t)">${p} <button onclick="removePpPlayer(${i})" style="background:none;border:none;color:var(--tm);cursor:pointer;font-size:12px">✕</button></span>`).join('');
+  document.getElementById('ppStartBtn').disabled=ppPlayers.length<2;
+}
+function startPassPlay(){
+  if(ppPlayers.length<2)return;
+  isPassPlay=true;ppCurrentIdx=0;ppResults=[];
+  // Generate shared questions once (seeded for fairness)
+  const seed=Date.now();
+  _seededRng=mulberry32(seed);
+  const metroP=currentModule==='metro'?ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M')):ALL_BIRDS.filter(s=>REG[s]&&/RE|YT|AN|GF/.test(REG[s]));
+  let pool;
+  if(competLevel==='debutant')pool=metroP.filter(s=>(PRES[s]||'A')==='A'&&getDiff(s)===1);
+  else if(competLevel==='apprenti')pool=metroP.filter(s=>'AB'.includes(PRES[s]||'A')&&getDiff(s)<=2);
+  else if(competLevel==='confirme')pool=metroP.filter(s=>'AB'.includes(PRES[s]||'A'));
+  else pool=metroP;
+  const picked=seededShuffle(pool).slice(0,15); // 15 questions (shorter for multi)
+  isFreeText=(competLevel==='confirme'||competLevel==='expert');
+  ppQuestions=picked.map(sp=>{
+    const fam=FAM[sp];
+    if(isFreeText)return{species:sp,family:fam,answer:sp,options:null,freeText:true};
+    let distractors;
+    if(competLevel==='debutant')distractors=getEasyDistractors(sp,pool,3);
+    else if(competLevel==='apprenti')distractors=getSmartDistractors(sp,pool,3);
+    else distractors=getDistractors(sp,pool.length>=10?pool:ALL_BIRDS,3);
+    const opts=seededShuffle([sp,...distractors]);
+    return{species:sp,family:fam,answer:sp,options:opts};
+  });
+  _seededRng=null;
+  startNextPpPlayer();
+}
+function startNextPpPlayer(){
+  if(ppCurrentIdx>=ppPlayers.length){
+    showPpResults();return;
+  }
+  const name=ppPlayers[ppCurrentIdx];
+  competName=name;
+  imgCache={};isExam=false;isCompet=true;competScore=0;score=0;streak=0;best=0;hist=[];ci=0;
+  qs=ppQuestions.map(q=>({...q}));
+  // Show transition screen
+  const quizEl=document.getElementById('quiz');
+  quizEl.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:20px">
+    <div style="font-size:48px;margin-bottom:16px">👤</div>
+    <div style="font-size:22px;color:var(--t);font-weight:600;margin-bottom:8px">C'est au tour de</div>
+    <div style="font-size:32px;color:#7b68ee;font-weight:700;margin-bottom:16px">${name}</div>
+    <div style="font-size:14px;color:var(--tm);margin-bottom:24px">Joueur ${ppCurrentIdx+1} / ${ppPlayers.length} · ${ppQuestions.length} questions</div>
+    <button class="start-btn" style="background:#7b68ee;color:#fff;font-size:16px;padding:14px 32px" onclick="launchPpRound()">C'est parti !</button>
+  </div>`;
+  showScreen('quiz');
+}
+function launchPpRound(){
+  // Restore quiz HTML
+  rebuildQuizHTML();
+  loadQuestion();
+}
+function rebuildQuizHTML(){
+  document.getElementById('quiz').innerHTML=`<div class="top-bar"><button class="back-btn" onclick="if(confirm('Quitter ?')){isPassPlay=false;showScreen('home')}">← Menu</button><span class="mono" id="scoreDisp" style="color:var(--accentL)">0</span></div><div id="diffBadge" style="text-align:center;margin-bottom:6px"></div><div id="qLabel" style="text-align:center;padding:0 12px"></div><div id="photoZone" class="photo-zone" onclick="toggleZoom()"><div id="photoSpinner" class="spinner"></div><img id="photoImg" style="display:none"><div id="photoNav" style="display:none;text-align:center;padding:4px"><button id="photoLeft" onclick="event.stopPropagation();prevPhoto()" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--t);padding:4px 12px;cursor:pointer">◀</button><span id="photoCount" class="mono" style="font-size:11px;padding:0 8px;color:var(--tm)"></span><button id="photoRight" onclick="event.stopPropagation();nextPhoto()" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--t);padding:4px 12px;cursor:pointer">▶</button></div><div id="photoTag" style="text-align:center;font-size:11px;color:var(--tm);padding:2px 0"></div></div><div id="xcPlayerQ" style="text-align:center;margin:6px 0"></div><div id="timerBar" style="display:none;margin:8px auto;max-width:400px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div id="timerFill" style="height:100%;background:var(--accentL);border-radius:3px;transition:width 0.3s"></div></div><div id="options" style="padding:0 12px 12px"></div><div id="answerBox" style="display:none;padding:0 12px 16px"></div>`;
+}
+// Override showResults for pass-and-play
+const _origShowResults=typeof showResults==='function'?showResults:null;
+
+function ppEndRound(){
+  // Save this player's results
+  ppResults.push({name:ppPlayers[ppCurrentIdx],score:competScore,correct:hist.filter(h=>h.ok).length,total:hist.length,hist:[...hist]});
+  ppCurrentIdx++;
+  startNextPpPlayer();
+}
+
+function showPpResults(){
+  isPassPlay=false;isCompet=false;
+  // Sort by score descending
+  ppResults.sort((a,b)=>b.score-a.score);
+  const medals=['🥇','🥈','🥉'];
+  let html=`<div class="top-bar"><button class="back-btn" onclick="showScreen('home')">← Menu</button></div>
+  <div style="text-align:center;margin-bottom:32px">
+    <div style="font-size:48px;margin-bottom:12px">🏆</div>
+    <div class="mono label" style="margin-bottom:8px">Classement Multi Local</div>
+    <div style="font-size:13px;color:var(--tm)">${ppResults[0]?.total||0} questions · Niveau ${competLevel}</div>
+  </div>`;
+  // Podium
+  html+='<div style="max-width:400px;margin:0 auto;padding:0 16px">';
+  ppResults.forEach((r,i)=>{
+    const medal=medals[i]||`${i+1}.`;
+    const bg=i===0?'linear-gradient(135deg,#e8b84d22,#e8b84d11)':i===1?'linear-gradient(135deg,#c0c0c022,#c0c0c011)':i===2?'linear-gradient(135deg,#cd7f3222,#cd7f3211)':'var(--card)';
+    const border=i===0?'#e8b84d33':i===1?'#c0c0c033':i===2?'#cd7f3233':'var(--border)';
+    const fs=i===0?'18px':'15px';
+    html+=`<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:24px">${medal}</span>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:${fs};color:var(--t)">${r.name}</div>
+        <div style="font-size:12px;color:var(--tm)">${r.correct}/${r.total} bonnes réponses</div>
+      </div>
+      <div style="font-family:monospace;font-size:${fs};font-weight:700;color:#e8b84d">${r.score}<span style="font-size:11px;color:var(--tm)"> pts</span></div>
+    </div>`;
+  });
+  html+='</div>';
+  // Detail toggle
+  html+='<div style="text-align:center;margin-top:20px"><button class="mode-btn" onclick="document.getElementById(\'ppDetail\').style.display=document.getElementById(\'ppDetail\').style.display===\'none\'?\'block\':\'none\'">📊 Détails par question</button></div>';
+  html+='<div id="ppDetail" style="display:none;max-width:500px;margin:12px auto;padding:0 12px">';
+  // Per-question comparison
+  const nQ=ppResults[0]?.hist?.length||0;
+  for(let qi=0;qi<nQ;qi++){
+    const sp=ppResults[0]?.hist?.[qi]?.species||'?';
+    html+=`<div style="margin:8px 0;padding:8px;background:var(--card);border-radius:6px;font-size:13px"><strong style="color:var(--t)">${qi+1}. ${NOM[sp]||sp}</strong> <em style="color:var(--tm);font-size:11px">${sp}</em><div style="margin-top:4px">`;
+    ppResults.forEach(r=>{
+      const h=r.hist[qi];
+      if(!h)return;
+      const icon=h.ok?'✅':'❌';
+      html+=`<span style="margin-right:10px">${icon} ${r.name}</span>`;
+    });
+    html+='</div></div>';
+  }
+  html+='</div>';
+  html+=`<div style="text-align:center;margin:24px 0"><button class="start-btn" style="background:#7b68ee;color:#fff" onclick="showScreen('home')">← Retour au menu</button></div>`;
+  const resultsEl=document.getElementById('results');
+  resultsEl.innerHTML=html;
+  showScreen('results');
+}
+
+// Seed challenge: add code to results display
+const _origShowResultsRef=showResults;
+
+// === ENHANCED iNAT PHOTO FILTERING ===
+// Minimum quality thresholds for iNaturalist observations
+const INAT_MIN_AGREEMENTS=2; // At least 2 agreeing identifications
+const INAT_MIN_FAVES=0; // Faves optional but used for ranking
+// Blacklist specific iNat observation IDs known to be bad
+const INAT_OBS_BLACKLIST=new Set([]);
+// Species that frequently get wrong photos
+const PHOTO_PROBLEM_SPECIES=new Set([
+  'Gavia immer','Coturnix coturnix','Dryocopus martius'
+]);
+
 // Smart distractors: prioritize same family/genus for Apprenti level
 function getEasyDistractors(sp,pool,n){
   // For Débutant: pick from DIFFERENT families to avoid confusing beginners
