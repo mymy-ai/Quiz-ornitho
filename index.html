@@ -1865,10 +1865,11 @@ function showFeedbackToast(ok,streakCount){
 // === STREAK MILESTONE BADGES ===
 function checkMilestone(stats){
   const sp=stats.species||{};
-  const mastered=Object.keys(sp).filter(s=>sp[s].ok>=3&&sp[s].ok/(sp[s].ok+sp[s].ko)>=0.7);
-  const milestones=[10,25,50,100,200];
-  const icons=['🥉','🥈','🥇','🏆','👑'];
-  const names=['10 espèces','25 espèces','50 espèces','100 espèces','200 espèces'];
+  // Mastered = 5 consecutive correct answers (streak >= 5)
+  const mastered=Object.keys(sp).filter(s=>(sp[s].streak||0)>=5);
+  const milestones=[15,50,150,300];
+  const icons=['🥉','🥈','🏆','👑'];
+  const names=['Débutant — 15 espèces','Apprenti — 50 espèces','Confirmé — 150 espèces','Expert — 300 espèces'];
   const prev=parseInt(localStorage.getItem('quizOrnithoLastMilestone')||'0');
   for(let i=milestones.length-1;i>=0;i--){
     if(mastered.length>=milestones[i]&&prev<milestones[i]){
@@ -3743,9 +3744,14 @@ function saveStats(stats){
 function recordAnswer(species, correct, module){
   const stats=getStats();
   if(!stats.species)stats.species={};
-  if(!stats.species[species])stats.species[species]={ok:0,ko:0,last:0};
-  if(correct)stats.species[species].ok++;
-  else stats.species[species].ko++;
+  if(!stats.species[species])stats.species[species]={ok:0,ko:0,last:0,streak:0};
+  if(correct){
+    stats.species[species].ok++;
+    stats.species[species].streak=(stats.species[species].streak||0)+1;
+  }else{
+    stats.species[species].ko++;
+    stats.species[species].streak=0; // Reset consecutive streak on error
+  }
   stats.species[species].last=Date.now();
   
   // Track session
@@ -3796,7 +3802,7 @@ function renderProfile(){
   }
   function calcStats(pool){
     const known=Object.keys(pool).filter(s=>pool[s].ok>0);
-    const mastered=Object.keys(pool).filter(s=>pool[s].ok>=3&&pool[s].ok/(pool[s].ok+pool[s].ko)>=0.7);
+    const mastered=Object.keys(pool).filter(s=>(pool[s].streak||0)>=5);
     const total={ok:0,ko:0};
     for(const d of Object.values(pool)){total.ok+=d.ok;total.ko+=d.ko;}
     const totalQ=total.ok+total.ko;
@@ -3805,13 +3811,12 @@ function renderProfile(){
   const mStats=calcStats(metroSp);
   const oStats=calcStats(omSp);
   
-  // Level unlock logic: need X% on Y mastered species
-  const metroA=ALL_BIRDS.filter(s=>REG[s]&&REG[s].includes('M')&&(PRES[s]||'A')==='A').length;
-  const metroMastered=Object.keys(metroSp).filter(s=>metroSp[s].ok>=3&&metroSp[s].ok/(metroSp[s].ok+metroSp[s].ko)>=0.7);
-  const metroMasteredA=metroMastered.filter(s=>(PRES[s]||'A')==='A');
-  const unlockApprenti=metroMasteredA.length>=15&&mStats.pct>=50; // 15 A mastered, 50%+
-  const unlockConfirme=metroMasteredA.length>=40&&mStats.pct>=60; // 40 A mastered, 60%+
-  const unlockExpert=metroMastered.length>=80&&mStats.pct>=70; // 80 any mastered, 70%+
+  // Level unlock logic: based on mastered species (5 consecutive correct)
+  const metroMastered=Object.keys(metroSp).filter(s=>(metroSp[s].streak||0)>=5);
+  const allMastered=[...new Set([...Object.keys(metroSp).filter(s=>(metroSp[s].streak||0)>=5),...Object.keys(omSp).filter(s=>(omSp[s].streak||0)>=5)])];
+  const unlockApprenti=allMastered.length>=15;
+  const unlockConfirme=allMastered.length>=50;
+  const unlockExpert=allMastered.length>=150;
   
   // Current level
   const level=unlockExpert?'expert':unlockConfirme?'confirme':unlockApprenti?'apprenti':'debutant';
@@ -3845,7 +3850,7 @@ function renderProfile(){
     ${['debutant','apprenti','confirme','expert'].map((lv,i)=>{
       const icons=['🌱','🌿','🌳','🦅'];
       const names=['Débutant','Apprenti','Confirmé','Expert'];
-      const reqs=['Accessible à tous','15 espèces A maîtrisées + 50%','40 espèces A maîtrisées + 60%','80 espèces maîtrisées + 70%'];
+      const reqs=['Accessible à tous','15 espèces maîtrisées (5× consécutives)','50 espèces maîtrisées','150 espèces maîtrisées'];
       const unlocked=lv==='debutant'||(lv==='apprenti'&&unlockApprenti)||(lv==='confirme'&&unlockConfirme)||(lv==='expert'&&unlockExpert);
       const current=lv===level;
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(i<3?'border-bottom:1px solid var(--border);':'')+'">'+
@@ -3862,7 +3867,7 @@ function renderProfile(){
       <div style="font-size:11px;color:var(--tm)">Espèces vues</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">
-      <div style="font-size:24px;color:#4a9e5c;font-weight:600">${metroMastered.length}</div>
+      <div style="font-size:24px;color:#4a9e5c;font-weight:600">${allMastered.length}</div>
       <div style="font-size:11px;color:var(--tm)">Maîtrisées</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">
