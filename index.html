@@ -2009,9 +2009,14 @@ async function fetchImages(species){
   // === iNaturalist FIRST (Research Grade = verified, field-realistic) ===
   const inatUrls=[];
   try{
-    const inatTaxon=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=1`);
-    if(inatTaxon?.results?.[0]?.id){
-      const taxonId=inatTaxon.results[0].id;
+    const inatTaxon=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=5`);
+    if(inatTaxon?.results?.length){
+      // Find the correct taxon: must be Aves (birds) and match species name
+      const birdTaxon=inatTaxon.results.find(t=>
+        t.iconic_taxon_name==='Aves'&&t.name&&t.name.toLowerCase()===species.toLowerCase()
+      )||inatTaxon.results.find(t=>t.iconic_taxon_name==='Aves');
+      if(birdTaxon?.id){
+      const taxonId=birdTaxon.id;
       const rndPage=Math.floor(Math.random()*10)+1;
       const inatObs=await tryFetch(`https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&quality_grade=research&photos=true&per_page=30&page=${rndPage}&order_by=random`);
       if(inatObs?.results){
@@ -2020,6 +2025,13 @@ async function fetchImages(species){
           if(obs.photos?.[0]?.url&&!seenObs.has(obs.id)){
             // Quality filtering: skip low-quality observations
             if(INAT_OBS_BLACKLIST.has(obs.id))continue;
+            // Verify the observation's community/species taxon is actually a bird
+            const obsTaxon=obs.taxon||obs.community_taxon;
+            if(obsTaxon&&obsTaxon.iconic_taxon_name&&obsTaxon.iconic_taxon_name!=='Aves')continue;
+            // Check species name matches (avoid misidentified observations)
+            if(obsTaxon?.name&&obsTaxon.name.toLowerCase()!==species.toLowerCase())continue;
+            // Skip captive/cultivated observations
+            if(obs.captive===true)continue;
             const agreements=obs.num_identification_agreements||0;
             const disagreements=obs.num_identification_disagreements||0;
             if(agreements<INAT_MIN_AGREEMENTS)continue;
@@ -2032,6 +2044,7 @@ async function fetchImages(species){
           }
         }
       }
+    }
     }
   }catch(e){}
 
@@ -2150,6 +2163,52 @@ async function fetchImages(species){
     const rest=await tryFetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
     if(rest?.originalimage?.source)urls.push(rest.originalimage.source);
     else if(rest?.thumbnail?.source)urls.push(rest.thumbnail.source.replace(/\/\d+px-/,'/900px-'));
+  }
+
+  // Fallback 2: Wikipedia FR (often has different images than EN)
+  if(urls.length<2){
+    try{
+      const frName=NOM[species]||species;
+      // Try FR Wikipedia with French name
+      const frRest=await tryFetch(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(frName)}`);
+      if(frRest?.originalimage?.source&&!urls.includes(frRest.originalimage.source)){
+        urls.push(frRest.originalimage.source);
+      }else if(frRest?.thumbnail?.source){
+        const frUrl=frRest.thumbnail.source.replace(/\/\d+px-/,'/900px-');
+        if(!urls.includes(frUrl))urls.push(frUrl);
+      }
+      // Also try with scientific name on FR wiki
+      if(urls.length<2){
+        const frRest2=await tryFetch(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
+        if(frRest2?.originalimage?.source&&!urls.includes(frRest2.originalimage.source)){
+          urls.push(frRest2.originalimage.source);
+        }
+      }
+    }catch(e){}
+  }
+
+  // Fallback 3: Flickr public API (good bird photography community)
+  if(urls.length<2){
+    try{
+      const flickrData=await tryFetch(`https://www.flickr.com/services/rest/?method=flickr.photos.search&api_key=f5963ca2ed05c2a3e42148869d26a9d0&text=${encodeURIComponent(species+' bird')}&tags=${encodeURIComponent(species.replace(/\s/g,','))}&tag_mode=any&sort=relevance&content_type=1&media=photos&per_page=10&format=json&nojsoncallback=1&license=1,2,3,4,5,6,9,10`);
+      if(flickrData?.photos?.photo){
+        for(const p of flickrData.photos.photo.slice(0,4)){
+          const fUrl=`https://live.staticflickr.com/${p.server}/${p.id}_${p.secret}_b.jpg`;
+          if(!urls.includes(fUrl)){urls.push(fUrl);if(urls.length>=4)break;}
+        }
+      }
+    }catch(e){}
+  }
+
+  // Fallback 4: iNaturalist taxon default photo (last resort, always available)
+  if(urls.length===0){
+    try{
+      const inatTaxon2=await tryFetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(species)}&rank=species&per_page=3`);
+      if(inatTaxon2?.results){
+        const bird=inatTaxon2.results.find(t=>t.iconic_taxon_name==='Aves'&&t.default_photo?.medium_url);
+        if(bird?.default_photo?.medium_url)urls.push(bird.default_photo.medium_url);
+      }
+    }catch(e){}
   }
 
   // Add iNat photos to fill up
@@ -2536,8 +2595,10 @@ function renderPhoto(){
     const url=typeof cur==='string'?cur:cur.url;
     img.src=url;
     img.style.display="";
-    img.onerror=()=>{curPhotos.splice(curPhotoIdx,1);if(curPhotos.length)renderPhoto();else img.style.display="none";};
-  } else{img.style.display="none";}
+    img.onerror=()=>{curPhotos.splice(curPhotoIdx,1);if(curPhotos.length)renderPhoto();else{img.style.display="none";showNoPhotoMsg();}};
+    // Remove any previous no-photo message
+    const oldMsg=document.getElementById("noPhotoMsg");if(oldMsg)oldMsg.remove();
+  } else{img.style.display="none";showNoPhotoMsg();}
   const dots=document.getElementById("photoNav");dots.innerHTML="";
   if(curPhotos.length>1){
     // Tag label for current photo
@@ -2559,6 +2620,14 @@ function renderPhoto(){
 
 function nextPhoto(){if(curPhotos.length>1){curPhotoIdx=(curPhotoIdx+1)%curPhotos.length;renderPhoto();}}
 function prevPhoto(){if(curPhotos.length>1){curPhotoIdx=(curPhotoIdx-1+curPhotos.length)%curPhotos.length;renderPhoto();}}
+function showNoPhotoMsg(){
+  const zone=document.getElementById("photoZone");if(!zone)return;
+  if(document.getElementById("noPhotoMsg"))return;
+  const msg=document.createElement("div");msg.id="noPhotoMsg";
+  msg.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--tm);font-size:14px;z-index:1";
+  msg.innerHTML="🐦<br><span style='font-size:12px'>Photo indisponible</span>";
+  zone.appendChild(msg);
+}
 function toggleZoom(){if(!curPhotos.length)return;zoomed=!zoomed;document.getElementById("photoZone").classList.toggle("zoomed",zoomed);renderPhoto();}
 
 function getCriteria(species){
@@ -2591,8 +2660,8 @@ function answer(opt){
       });
     }
     document.getElementById("scoreDisp").textContent="—";
-    document.getElementById("progressFill").style.width=`${((ci+1)/qs.length)*100}%`;
-    const sd=document.getElementById("streakDisp");sd.style.display="none";
+    const pf=document.getElementById("progressFill");if(pf)pf.style.width=`${((ci+1)/qs.length)*100}%`;
+    const sd=document.getElementById("streakDisp");if(sd)sd.style.display="none";
     // Auto-advance after brief pause
     setTimeout(()=>{if(ci<qs.length-1){ci++;loadQuestion();}else showResults();},400);
     return;
@@ -2619,12 +2688,12 @@ function answer(opt){
       b.onclick=null;
     });
   }
-  document.getElementById("scoreDisp").textContent=isCompet?competScore+" pts":score;
+  {const _sd2=document.getElementById("scoreDisp");if(_sd2)_sd2.textContent=isCompet?competScore+" pts":score;}
   const sd=document.getElementById("streakDisp");
-  if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";
-  document.getElementById("progressFill").style.width=`${((ci+1)/qs.length)*100}%`;
+  if(sd){if(streak>1){sd.style.display="";sd.textContent=`Série ${streak}${streak>=5?" 🔥":""}`;}else sd.style.display="none";}
+  {const _pf=document.getElementById("progressFill");if(_pf)_pf.style.width=`${((ci+1)/qs.length)*100}%`;}
 
-  const ab=document.getElementById("answerBox");ab.style.display="block";
+  const ab=document.getElementById("answerBox");if(!ab)return;ab.style.display="block";
   const fr=NOM[q.species]||q.species;
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
@@ -3136,7 +3205,7 @@ function launchPpRound(){
   loadQuestion();
 }
 function rebuildQuizHTML(){
-  document.getElementById('quiz').innerHTML=`<div class="top-bar"><button class="back-btn" onclick="if(confirm('Quitter ?')){isPassPlay=false;showScreen('home')}">← Menu</button><span class="mono" id="scoreDisp" style="color:var(--accentL)">0</span></div><div id="diffBadge" style="text-align:center;margin-bottom:6px"></div><div id="qLabel" style="text-align:center;padding:0 12px"></div><div id="photoZone" class="photo-zone" onclick="toggleZoom()"><div id="photoSpinner" class="spinner"></div><img id="photoImg" style="display:none"><div id="photoNav" style="display:none;text-align:center;padding:4px"><button id="photoLeft" onclick="event.stopPropagation();prevPhoto()" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--t);padding:4px 12px;cursor:pointer">◀</button><span id="photoCount" class="mono" style="font-size:11px;padding:0 8px;color:var(--tm)"></span><button id="photoRight" onclick="event.stopPropagation();nextPhoto()" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--t);padding:4px 12px;cursor:pointer">▶</button></div><div id="photoTag" style="text-align:center;font-size:11px;color:var(--tm);padding:2px 0"></div></div><div id="xcPlayerQ" style="text-align:center;margin:6px 0"></div><div id="timerBar" style="display:none;margin:8px auto;max-width:400px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div id="timerFill" style="height:100%;background:var(--accentL);border-radius:3px;transition:width 0.3s"></div></div><div id="options" style="padding:0 12px 12px"></div><div id="answerBox" style="display:none;padding:0 12px 16px"></div>`;
+  document.getElementById('quiz').innerHTML=`<div class="top-bar"><button class="back-btn" onclick="if(confirm('Quitter ?')){isPassPlay=false;showScreen('home')}">← Menu</button><div class="score-area"><span class="mono" id="scoreDisp" style="color:var(--accentL)">0</span><span id="streakDisp" style="display:none" class="mono"></span></div></div><div class="progress"><div class="progress-fill" id="progressFill"></div></div><div id="timerBar" style="display:none;width:100%;max-width:1100px;margin:0 auto 4px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div id="timerFill" style="height:100%;background:#e8b84d;width:100%;transition:width 0.1s linear;border-radius:2px"></div></div><div class="q-label" id="qLabel"></div><div id="diffBadge" style="text-align:center;margin-bottom:4px"></div><div class="quiz-grid"><div class="quiz-left"><div class="photo-zone" id="photoZone" onclick="toggleZoom()"><div class="spinner" id="photoSpinner"></div><img id="photoImg" style="display:none" alt="Photo"><div class="photo-arrows"><button class="photo-arrow" onclick="event.stopPropagation();prevPhoto()">‹</button><button class="photo-arrow" onclick="event.stopPropagation();nextPhoto()">›</button></div><div class="photo-credit" id="photoCredit"></div><div class="photo-count" id="photoCount"></div></div><div class="photo-nav" id="photoNav"></div><div id="xcPlayerQ" style="margin:4px 0"></div><button id="reportBtn" onclick="reportIssue(qs[ci].species)" style="width:100%;padding:5px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--tm);font-size:11px;cursor:pointer;opacity:0.5;margin-top:2px">⚠ Signaler un problème</button></div><div class="quiz-right"><div class="options" id="options"></div><div id="answerBox" style="display:none"></div></div></div>`;
 }
 // Override showResults for pass-and-play
 const _origShowResults=typeof showResults==='function'?showResults:null;
@@ -3210,7 +3279,7 @@ const INAT_MIN_FAVES=0; // Faves optional but used for ranking
 const INAT_OBS_BLACKLIST=new Set([]);
 // Species that frequently get wrong photos
 const PHOTO_PROBLEM_SPECIES=new Set([
-  'Gavia immer','Coturnix coturnix','Dryocopus martius'
+  'Gavia immer','Coturnix coturnix','Dryocopus martius','Crithagra canicollis','Tetrao urogallus','Phylloscopus collybita'
 ]);
 
 // Smart distractors: prioritize same family/genus for Apprenti level
@@ -3377,8 +3446,8 @@ function timeUp(){
     else b.classList.add("faded");
     b.onclick=null;
   });
-  document.getElementById("progressFill").style.width=((ci+1)/qs.length)*100+"%";
-  const ab=document.getElementById("answerBox");ab.style.display="block";
+  {const _pf=document.getElementById("progressFill");if(_pf)_pf.style.width=((ci+1)/qs.length)*100+"%";}
+  const ab=document.getElementById("answerBox");if(!ab){nextQ();return;}ab.style.display="block";
   const fr=NOM[q.species]||q.species;
   const crit=getCriteria(q.species);
   const statusText=STATDET[q.species]||"";
